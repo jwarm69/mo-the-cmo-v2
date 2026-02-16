@@ -10,6 +10,7 @@ import {
   pgEnum,
   vector,
   index,
+  uniqueIndex,
 } from "drizzle-orm/pg-core";
 
 // Enums
@@ -74,30 +75,37 @@ export const organizations = pgTable("organizations", {
 
 // ─── Brand Profiles ──────────────────────────────────────────────────
 
-export const brandProfiles = pgTable("brand_profiles", {
-  id: uuid("id").primaryKey().defaultRandom(),
-  orgId: uuid("org_id")
-    .references(() => organizations.id)
-    .notNull(),
-  name: text("name").notNull(),
-  voice: text("voice"),
-  tone: text("tone"),
-  messagingPillars: jsonb("messaging_pillars").$type<string[]>(),
-  contentPillars: jsonb("content_pillars").$type<
-    { name: string; ratio: number; description: string }[]
-  >(),
-  targetAudience: jsonb("target_audience").$type<{
-    demographics: string;
-    psychographics: string;
-    painPoints: string[];
-    goals: string[];
-  }>(),
-  brandGuidelines: text("brand_guidelines"),
-  competitors: jsonb("competitors").$type<string[]>(),
-  hashtags: jsonb("hashtags").$type<string[]>(),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-  updatedAt: timestamp("updated_at").defaultNow().notNull(),
-});
+export const brandProfiles = pgTable(
+  "brand_profiles",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    orgId: uuid("org_id")
+      .references(() => organizations.id)
+      .notNull(),
+    name: text("name").notNull(),
+    voice: text("voice"),
+    tone: text("tone"),
+    messagingPillars: jsonb("messaging_pillars").$type<string[]>(),
+    contentPillars: jsonb("content_pillars").$type<
+      { name: string; ratio: number; description: string }[]
+    >(),
+    targetAudience: jsonb("target_audience").$type<{
+      demographics: string;
+      psychographics: string;
+      painPoints: string[];
+      goals: string[];
+    }>(),
+    brandGuidelines: text("brand_guidelines"),
+    competitors: jsonb("competitors").$type<string[]>(),
+    hashtags: jsonb("hashtags").$type<string[]>(),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  },
+  (table) => [
+    uniqueIndex("brand_profiles_org_unique_idx").on(table.orgId),
+    index("brand_profiles_org_idx").on(table.orgId),
+  ]
+);
 
 // ─── Campaigns ───────────────────────────────────────────────────────
 

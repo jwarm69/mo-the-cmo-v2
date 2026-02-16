@@ -1,14 +1,22 @@
 /**
  * Vector embedding utilities.
- * Sprint 1: Stub.
- * Sprint 2: Full implementation with OpenAI embeddings + pgvector.
  */
 
+import { embed } from "ai";
+import { embeddingModel } from "@/lib/ai/providers/openai";
+
 export async function generateEmbedding(
-  _text: string
+  text: string
 ): Promise<number[]> {
-  // Sprint 2: Use OpenAI text-embedding-3-small
-  return [];
+  const value = text.trim();
+  if (!value) return [];
+
+  const { embedding } = await embed({
+    model: embeddingModel,
+    value: value.slice(0, 8000),
+  });
+
+  return embedding;
 }
 
 export async function cosineSimilarity(a: number[], b: number[]): Promise<number> {

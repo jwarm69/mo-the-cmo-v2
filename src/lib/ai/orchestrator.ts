@@ -1,5 +1,6 @@
 import { routeTask, inferTaskType, type TaskType } from "./model-router";
 import { buildContextualPrompt } from "./prompts/system";
+import { type LanguageModel } from "ai";
 
 export interface AgentContext {
   brandProfile?: string;
@@ -26,8 +27,13 @@ export interface AgentResult {
 export async function orchestrate(
   userMessage: string,
   context: AgentContext = {}
-): Promise<{ systemPrompt: string; taskType: TaskType }> {
+): Promise<{
+  systemPrompt: string;
+  taskType: TaskType;
+  model: LanguageModel;
+}> {
   const taskType = inferTaskType(userMessage);
+  const model = routeTask(taskType);
 
   const systemPrompt = buildContextualPrompt(
     context.brandProfile,
@@ -36,5 +42,5 @@ export async function orchestrate(
     context.preferences
   );
 
-  return { systemPrompt, taskType };
+  return { systemPrompt, taskType, model };
 }

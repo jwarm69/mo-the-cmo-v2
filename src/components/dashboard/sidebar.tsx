@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useState } from "react";
+import { CLIENT_DEFAULT_ORG_NAME } from "@/lib/client-config";
 
 const navItems = [
   { href: "/", label: "Dashboard", icon: LayoutDashboard },
@@ -92,7 +93,7 @@ export function Sidebar() {
       {!collapsed && (
         <div className="border-t p-4">
           <div className="rounded-lg bg-muted p-3">
-            <p className="text-xs font-medium">Bite Club</p>
+            <p className="text-xs font-medium">{CLIENT_DEFAULT_ORG_NAME}</p>
             <p className="text-xs text-muted-foreground">Phase A - Active</p>
           </div>
         </div>

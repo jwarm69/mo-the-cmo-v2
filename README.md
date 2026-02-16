@@ -1,36 +1,57 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Mo the CMO
 
-## Getting Started
+Mo is a multi-tenant AI CMO app (Next.js + Drizzle + Postgres) with:
+- protected API endpoints (`x-api-key`/Bearer token)
+- per-org brand profiles
+- task-routed model selection
+- knowledge-backed context assembly from markdown docs
 
-First, run the development server:
+## 1. Prerequisites
+
+- Node 20+
+- Postgres (Supabase or local)
+- API keys: Anthropic and/or OpenAI
+
+## 2. Environment
+
+Copy `.env.example` to `.env.local` and set values:
+
+- `DATABASE_URL`
+- `APP_API_KEY`
+- `NEXT_PUBLIC_APP_API_KEY` (same value as `APP_API_KEY`)
+- `DEFAULT_ORG_SLUG` / `NEXT_PUBLIC_DEFAULT_ORG_SLUG`
+- `DEFAULT_ORG_NAME` / `NEXT_PUBLIC_DEFAULT_ORG_NAME`
+- `ANTHROPIC_API_KEY`
+- `OPENAI_API_KEY`
+
+## 3. Database Migration
+
+Apply SQL migration:
+
+- `supabase/migrations/0001_brand_profiles_org_unique.sql`
+
+This enforces one brand profile per org and de-duplicates existing rows.
+
+## 4. Run
 
 ```bash
+npm ci
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open `http://localhost:3000`.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## 5. Organization Knowledge
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Mo reads knowledge files from:
 
-## Learn More
+1. `knowledge/<org-slug>/*.md` (preferred, org-specific)
+2. fallback `knowledge/*.md`
 
-To learn more about Next.js, take a look at the following resources:
+For multi-company usage, create one folder per company slug and add their docs.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## 6. Security Notes
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+- API routes require `APP_API_KEY`.
+- Do not expose the app publicly without adding proper user auth (Supabase/Auth0/etc.) and tenant membership checks.
 
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.

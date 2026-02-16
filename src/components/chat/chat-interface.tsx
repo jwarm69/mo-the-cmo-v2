@@ -10,10 +10,17 @@ import { Badge } from "@/components/ui/badge";
 import { Bot, Send, User, Loader2 } from "lucide-react";
 import { useRef, useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
+import {
+  buildClientApiHeaders,
+  CLIENT_DEFAULT_ORG_NAME,
+} from "@/lib/client-config";
 
 export function ChatInterface() {
   const { messages, sendMessage, status } = useChat({
-    transport: new DefaultChatTransport({ api: "/api/chat" }),
+    transport: new DefaultChatTransport({
+      api: "/api/chat",
+      headers: buildClientApiHeaders(),
+    }),
   });
 
   const [input, setInput] = useState("");
@@ -66,10 +73,10 @@ export function ChatInterface() {
               </p>
               <div className="grid gap-2 sm:grid-cols-2">
                 {[
-                  "Write a TikTok script about meal prep for UF students",
-                  "Plan a back-to-school campaign for August",
-                  "Create an Instagram caption for our weekly meal deal",
-                  "What content should we post this week?",
+                  `Write a short-form video script for ${CLIENT_DEFAULT_ORG_NAME}`,
+                  "Plan a campaign for next month with clear KPIs",
+                  "Create an Instagram caption for our current offer",
+                  "What should we post this week and why?",
                 ].map((suggestion) => (
                   <button
                     key={suggestion}
@@ -184,8 +191,8 @@ export function ChatInterface() {
           </Button>
         </div>
         <p className="mt-2 text-xs text-muted-foreground">
-          Mo uses Claude Sonnet for content, Opus for strategy. Press Enter to
-          send, Shift+Enter for new line.
+          Mo routes requests by task type to optimize quality and cost. Press
+          Enter to send, Shift+Enter for new line.
         </p>
       </div>
     </div>

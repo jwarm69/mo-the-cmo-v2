@@ -14,16 +14,107 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Palette, Target, BookOpen, Hash, Save } from "lucide-react";
-import { useState } from "react";
-import { BITE_CLUB_BRAND_SEED } from "@/lib/seed/bite-club";
+import { useEffect, useState } from "react";
+import {
+  DEFAULT_BRAND_PROFILE,
+  normalizeBrandProfile,
+  type BrandProfileInput,
+} from "@/lib/brand/defaults";
+import {
+  buildClientApiHeaders,
+  CLIENT_DEFAULT_ORG_NAME,
+  CLIENT_DEFAULT_ORG_SLUG,
+} from "@/lib/client-config";
 
 export default function BrandPage() {
-  const [brand, setBrand] = useState(BITE_CLUB_BRAND_SEED);
+  const [brand, setBrand] = useState<BrandProfileInput>({
+    ...DEFAULT_BRAND_PROFILE,
+    name: CLIENT_DEFAULT_ORG_NAME,
+  });
   const [saved, setSaved] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  const handleSave = () => {
-    setSaved(true);
-    setTimeout(() => setSaved(false), 2000);
+  useEffect(() => {
+    const loadBrandProfile = async () => {
+      try {
+        setIsLoading(true);
+        setError(null);
+
+        const response = await fetch(
+          `/api/brand?orgSlug=${encodeURIComponent(CLIENT_DEFAULT_ORG_SLUG)}`,
+          { headers: buildClientApiHeaders() }
+        );
+        const data = (await response.json()) as {
+          error?: string;
+          profile?: Partial<BrandProfileInput> | null;
+        };
+
+        if (!response.ok) {
+          setError(data.error ?? "Failed to load brand profile");
+          return;
+        }
+
+        setBrand(
+          normalizeBrandProfile({
+            ...data.profile,
+            name: data.profile?.name ?? CLIENT_DEFAULT_ORG_NAME,
+          })
+        );
+      } catch (loadError) {
+        const message =
+          loadError instanceof Error
+            ? loadError.message
+            : "Failed to load brand profile";
+        setError(message);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    void loadBrandProfile();
+  }, []);
+
+  const handleSave = async () => {
+    try {
+      setIsSaving(true);
+      setError(null);
+
+      const response = await fetch("/api/brand", {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          ...buildClientApiHeaders(),
+        },
+        body: JSON.stringify({
+          orgSlug: CLIENT_DEFAULT_ORG_SLUG,
+          ...brand,
+        }),
+      });
+
+      const data = (await response.json()) as {
+        error?: string;
+        profile?: Partial<BrandProfileInput> | null;
+      };
+
+      if (!response.ok) {
+        setError(data.error ?? "Failed to save brand profile");
+        return;
+      }
+
+      setBrand(normalizeBrandProfile(data.profile));
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2000);
+    } catch (saveError) {
+      const message =
+        saveError instanceof Error
+          ? saveError.message
+          : "Failed to save brand profile";
+      setError(message);
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   return (
@@ -35,10 +126,16 @@ export default function BrandPage() {
             Define your brand voice, messaging, and content strategy. Mo uses
             this for all content generation.
           </p>
+          {isLoading && (
+            <p className="mt-2 text-sm text-muted-foreground">
+              Loading brand profile...
+            </p>
+          )}
+          {error && <p className="mt-2 text-sm text-destructive">{error}</p>}
         </div>
-        <Button onClick={handleSave}>
+        <Button onClick={handleSave} disabled={isSaving || isLoading}>
           <Save className="mr-2 h-4 w-4" />
-          {saved ? "Saved!" : "Save Changes"}
+          {isSaving ? "Saving..." : saved ? "Saved!" : "Save Changes"}
         </Button>
       </div>
 
