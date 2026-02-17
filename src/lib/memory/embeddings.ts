@@ -2,7 +2,7 @@
  * Vector embedding utilities.
  */
 
-import { embed } from "ai";
+import { embed, embedMany } from "ai";
 import { embeddingModel } from "@/lib/ai/providers/openai";
 
 export async function generateEmbedding(
@@ -19,7 +19,17 @@ export async function generateEmbedding(
   return embedding;
 }
 
-export async function cosineSimilarity(a: number[], b: number[]): Promise<number> {
+export async function generateEmbeddings(
+  texts: string[]
+): Promise<number[][]> {
+  const { embeddings } = await embedMany({
+    model: embeddingModel,
+    values: texts,
+  });
+  return embeddings;
+}
+
+export function cosineSimilarity(a: number[], b: number[]): number {
   if (a.length !== b.length || a.length === 0) return 0;
   let dotProduct = 0;
   let normA = 0;

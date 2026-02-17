@@ -13,7 +13,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Palette, Target, BookOpen, Hash, Save } from "lucide-react";
+import { Palette, Target, BookOpen, Hash, Save, Database } from "lucide-react";
 import { useEffect, useState } from "react";
 import {
   DEFAULT_BRAND_PROFILE,
@@ -25,6 +25,7 @@ import {
   CLIENT_DEFAULT_ORG_NAME,
   CLIENT_DEFAULT_ORG_SLUG,
 } from "@/lib/client-config";
+import { KnowledgeList } from "@/components/content/knowledge-list";
 
 export default function BrandPage() {
   const [brand, setBrand] = useState<BrandProfileInput>({
@@ -156,6 +157,10 @@ export default function BrandPage() {
           <TabsTrigger value="details" className="gap-2">
             <Hash className="h-4 w-4" />
             Details
+          </TabsTrigger>
+          <TabsTrigger value="knowledge" className="gap-2">
+            <Database className="h-4 w-4" />
+            Knowledge Base
           </TabsTrigger>
         </TabsList>
 
@@ -414,6 +419,22 @@ export default function BrandPage() {
                   </Badge>
                 ))}
               </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* Knowledge Base */}
+        <TabsContent value="knowledge" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>Knowledge Base</CardTitle>
+              <CardDescription>
+                Marketing documents that Mo uses to generate brand-aware content
+                via RAG.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <KnowledgeList />
             </CardContent>
           </Card>
         </TabsContent>
