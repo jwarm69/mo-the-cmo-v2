@@ -66,10 +66,13 @@ export function ChatInterface() {
           {messages.length === 0 && (
             <div className="flex flex-col items-center justify-center py-12 text-center">
               <Bot className="mb-4 h-12 w-12 text-muted-foreground" />
-              <h3 className="mb-2 text-lg font-semibold">Chat with Mo</h3>
+              <h3 className="mb-2 text-lg font-semibold">
+                Chat with Mo — {CLIENT_DEFAULT_ORG_NAME} CMO
+              </h3>
               <p className="mb-6 max-w-md text-sm text-muted-foreground">
-                I&apos;m your AI CMO. Ask me to create content, plan campaigns,
-                analyze performance, or brainstorm marketing ideas.
+                I&apos;m the {CLIENT_DEFAULT_ORG_NAME} CMO. Ask me to create
+                content, plan campaigns, analyze performance, or brainstorm
+                marketing ideas.
               </p>
               <div className="grid gap-2 sm:grid-cols-2">
                 {[
@@ -128,7 +131,7 @@ export function ChatInterface() {
                   </span>
                   {message.role === "assistant" && (
                     <Badge variant="secondary" className="text-[10px]">
-                      CMO
+                      {CLIENT_DEFAULT_ORG_NAME} CMO
                     </Badge>
                   )}
                 </div>

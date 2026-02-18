@@ -7,7 +7,7 @@ import { requireApiKey } from "@/lib/api/auth";
 import { resolveOrgFromRequest } from "@/lib/api/org";
 import { contentItems, calendarSlots } from "@/lib/store";
 import type { ContentItem, CalendarSlot, Platform } from "@/lib/store/types";
-import { BITE_CLUB_BRAND_SEED } from "@/lib/seed/bite-club";
+import { EXAMPLE_BRAND_SEED } from "@/lib/seed/bite-club";
 
 const WEEKLY_SCHEDULE: { day: number; time: string; platform: Platform }[] = [
   { day: 1, time: "12:00", platform: "tiktok" },
@@ -51,7 +51,7 @@ export async function POST(req: Request) {
 
   const org = await resolveOrgFromRequest(req);
 
-  const pillars = BITE_CLUB_BRAND_SEED.contentPillars;
+  const pillars = EXAMPLE_BRAND_SEED.contentPillars;
   const { brandContext } = await assembleContext(org.id, "weekly content plan");
 
   // Get the Monday of the current week

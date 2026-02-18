@@ -1,6 +1,5 @@
 import { type LanguageModel } from "ai";
-import { sonnet, opus } from "./providers/anthropic";
-import { gpt4oMini } from "./providers/openai";
+import { gpt4o, gpt4oMini } from "./providers/openai";
 
 export type TaskType =
   | "strategy"
@@ -16,17 +15,17 @@ export type TaskType =
   | "analysis";
 
 const TASK_MODEL_MAP: Record<TaskType, LanguageModel> = {
-  // High-stakes strategic tasks -> Opus
-  strategy: opus,
-  campaign_planning: opus,
-  weekly_report: opus,
-  analysis: opus,
+  // High-stakes strategic tasks -> GPT-4o
+  strategy: gpt4o,
+  campaign_planning: gpt4o,
+  weekly_report: gpt4o,
+  analysis: gpt4o,
 
-  // Creative content tasks -> Sonnet
-  content_writing: sonnet,
-  email_sequence: sonnet,
-  ad_copy: sonnet,
-  chat: sonnet,
+  // Creative content tasks -> GPT-4o
+  content_writing: gpt4o,
+  email_sequence: gpt4o,
+  ad_copy: gpt4o,
+  chat: gpt4o,
 
   // Bulk/commodity tasks -> GPT-4o-mini
   bulk_variations: gpt4oMini,

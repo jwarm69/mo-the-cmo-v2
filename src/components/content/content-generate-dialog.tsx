@@ -21,7 +21,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Plus, Loader2 } from "lucide-react";
-import { BITE_CLUB_BRAND_SEED } from "@/lib/seed/bite-club";
+import { EXAMPLE_BRAND_SEED } from "@/lib/seed/bite-club";
 import type { Platform } from "@/lib/store/types";
 
 const PLATFORMS: { value: Platform; label: string }[] = [
@@ -113,7 +113,7 @@ export function ContentGenerateDialog({
                 <SelectValue placeholder="Auto-select" />
               </SelectTrigger>
               <SelectContent>
-                {BITE_CLUB_BRAND_SEED.contentPillars.map((p) => (
+                {EXAMPLE_BRAND_SEED.contentPillars.map((p) => (
                   <SelectItem key={p.name} value={p.name}>
                     {p.name} ({p.ratio}%)
                   </SelectItem>

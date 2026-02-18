@@ -1,3 +1,6 @@
+"use client";
+
+import { useEffect, useState } from "react";
 import {
   Card,
   CardContent,
@@ -6,6 +9,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import {
   FileText,
   TrendingUp,
@@ -13,8 +17,11 @@ import {
   Brain,
   MessageSquare,
   Megaphone,
+  Sparkles,
 } from "lucide-react";
 import Link from "next/link";
+import { buildClientApiHeaders, CLIENT_DEFAULT_ORG_SLUG, CLIENT_DEFAULT_ORG_NAME } from "@/lib/client-config";
+import { DEFAULT_BRAND_PROFILE } from "@/lib/brand/defaults";
 
 const stats = [
   {
@@ -75,17 +82,61 @@ const quickActions = [
 ];
 
 export default function DashboardPage() {
+  const [needsSetup, setNeedsSetup] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    async function checkBrand() {
+      try {
+        const res = await fetch(
+          `/api/brand?orgSlug=${encodeURIComponent(CLIENT_DEFAULT_ORG_SLUG)}`,
+          { headers: buildClientApiHeaders() }
+        );
+        const data = await res.json();
+        const profile = data.profile;
+        if (!profile || profile.voice === DEFAULT_BRAND_PROFILE.voice) {
+          setNeedsSetup(true);
+        }
+      } catch {
+        setNeedsSetup(true);
+      } finally {
+        setIsLoading(false);
+      }
+    }
+    checkBrand();
+  }, []);
+
   return (
     <div className="space-y-8">
       {/* Welcome */}
       <div>
         <h2 className="text-3xl font-bold tracking-tight">
-          Welcome back
+          Welcome back to <span className="text-primary">{CLIENT_DEFAULT_ORG_NAME}</span>
         </h2>
         <p className="text-muted-foreground">
-          Here&apos;s what&apos;s happening with your marketing today.
+          Here&apos;s what&apos;s happening with {CLIENT_DEFAULT_ORG_NAME} marketing today.
         </p>
       </div>
+
+      {/* Setup CTA */}
+      {needsSetup && !isLoading && (
+        <Card className="border-primary/20 bg-gradient-to-r from-primary/5 to-primary/10">
+          <CardHeader className="flex flex-row items-center gap-4">
+            <div className="rounded-lg bg-primary/10 p-3">
+              <Sparkles className="h-6 w-6 text-primary" />
+            </div>
+            <div className="flex-1">
+              <CardTitle>Set Up Mo for Your Brand</CardTitle>
+              <CardDescription>
+                Walk through a quick setup wizard to teach Mo about your brand, audience, and voice. Takes about 5 minutes.
+              </CardDescription>
+            </div>
+            <Link href="/setup">
+              <Button>Start Setup</Button>
+            </Link>
+          </CardHeader>
+        </Card>
+      )}
 
       {/* Stats Grid */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">

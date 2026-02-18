@@ -13,6 +13,7 @@ import {
   Settings,
   Bot,
   ChevronLeft,
+  Sparkles,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useState } from "react";
@@ -20,6 +21,7 @@ import { CLIENT_DEFAULT_ORG_NAME } from "@/lib/client-config";
 
 const navItems = [
   { href: "/", label: "Dashboard", icon: LayoutDashboard },
+  { href: "/setup", label: "Setup Wizard", icon: Sparkles },
   { href: "/chat", label: "Chat with Mo", icon: MessageSquare },
   { href: "/campaigns", label: "Campaigns", icon: Megaphone },
   { href: "/content", label: "Content", icon: FileText },
@@ -46,7 +48,7 @@ export function Sidebar() {
           <div className="flex flex-col">
             <span className="text-lg font-bold leading-tight">Mo</span>
             <span className="text-xs text-muted-foreground leading-tight">
-              the CMO
+              {CLIENT_DEFAULT_ORG_NAME} CMO
             </span>
           </div>
         )}
