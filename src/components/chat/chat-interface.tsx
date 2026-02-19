@@ -7,17 +7,23 @@ import { Textarea } from "@/components/ui/textarea";
 
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import { Bot, Send, User, Loader2 } from "lucide-react";
+import { Bot, Send, User, Loader2, AlertCircle } from "lucide-react";
 import { useRef, useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
+import { toast } from "sonner";
 import { CLIENT_DEFAULT_ORG_NAME, CLIENT_DEFAULT_ORG_SLUG } from "@/lib/client-config";
 
 export function ChatInterface() {
-  const { messages, sendMessage, status } = useChat({
+  const { messages, sendMessage, status, error } = useChat({
     transport: new DefaultChatTransport({
       api: "/api/chat",
       headers: { "x-org-slug": CLIENT_DEFAULT_ORG_SLUG },
     }),
+    onError: (err) => {
+      toast.error("Chat error", {
+        description: err.message || "Something went wrong. Check your API configuration.",
+      });
+    },
   });
 
   const [input, setInput] = useState("");
@@ -162,6 +168,16 @@ export function ChatInterface() {
                 <span className="text-sm text-muted-foreground">
                   Mo is thinking...
                 </span>
+              </div>
+            </div>
+          )}
+
+          {error && (
+            <div className="flex items-start gap-2 rounded-lg border border-destructive/50 bg-destructive/10 px-4 py-3">
+              <AlertCircle className="h-4 w-4 mt-0.5 shrink-0 text-destructive" />
+              <div className="text-sm text-destructive">
+                <p className="font-medium">Something went wrong</p>
+                <p className="mt-1 opacity-80">{error.message}</p>
               </div>
             </div>
           )}

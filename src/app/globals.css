@@ -3,6 +3,7 @@
 @import "shadcn/tailwind.css";
 
 @custom-variant dark (&:is(.dark *));
+@custom-variant homebrew (&:is(.homebrew *));
 
 @theme inline {
   --color-background: var(--background);
@@ -115,6 +116,40 @@
   --sidebar-accent-foreground: oklch(0.985 0 0);
   --sidebar-border: oklch(1 0 0 / 10%);
   --sidebar-ring: oklch(0.556 0 0);
+}
+
+.homebrew {
+  --background: oklch(0.08 0.01 150);
+  --foreground: oklch(0.85 0.2 145);
+  --card: oklch(0.12 0.02 150);
+  --card-foreground: oklch(0.85 0.2 145);
+  --popover: oklch(0.12 0.02 150);
+  --popover-foreground: oklch(0.85 0.2 145);
+  --primary: oklch(0.75 0.25 145);
+  --primary-foreground: oklch(0.08 0.01 150);
+  --secondary: oklch(0.15 0.03 150);
+  --secondary-foreground: oklch(0.80 0.18 145);
+  --muted: oklch(0.15 0.03 150);
+  --muted-foreground: oklch(0.55 0.12 145);
+  --accent: oklch(0.65 0.22 145);
+  --accent-foreground: oklch(0.08 0.01 150);
+  --destructive: oklch(0.577 0.245 27.325);
+  --border: oklch(0.75 0.25 145 / 15%);
+  --input: oklch(0.75 0.25 145 / 20%);
+  --ring: oklch(0.75 0.25 145 / 40%);
+  --chart-1: oklch(0.75 0.25 145);
+  --chart-2: oklch(0.65 0.20 155);
+  --chart-3: oklch(0.55 0.15 140);
+  --chart-4: oklch(0.80 0.22 135);
+  --chart-5: oklch(0.45 0.12 150);
+  --sidebar: oklch(0.06 0.01 150);
+  --sidebar-foreground: oklch(0.85 0.2 145);
+  --sidebar-primary: oklch(0.75 0.25 145);
+  --sidebar-primary-foreground: oklch(0.08 0.01 150);
+  --sidebar-accent: oklch(0.15 0.03 150);
+  --sidebar-accent-foreground: oklch(0.80 0.18 145);
+  --sidebar-border: oklch(0.75 0.25 145 / 15%);
+  --sidebar-ring: oklch(0.75 0.25 145 / 40%);
 }
 
 @layer base {
