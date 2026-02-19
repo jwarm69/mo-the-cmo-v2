@@ -3,20 +3,35 @@ import { generateText } from "ai";
 import { sonnet } from "@/lib/ai/providers/anthropic";
 import { buildContentGenerationPrompt } from "@/lib/ai/prompts/system";
 import { assembleContext } from "@/lib/rag/context";
-import { requireApiKey } from "@/lib/api/auth";
+import { requireAuth } from "@/lib/api/session";
 import { resolveOrgFromRequest } from "@/lib/api/org";
-import { contentItems } from "@/lib/store";
-import type { Platform, ContentItem } from "@/lib/store/types";
+import { insertContent } from "@/lib/db/content";
+import { checkUsageLimit, recordUsage } from "@/lib/usage/tracker";
+import type { Platform } from "@/lib/store/types";
 
 export async function POST(req: Request) {
-  const authError = requireApiKey(req);
-  if (authError) return authError;
+  const auth = await requireAuth(req);
+  if (auth.error) return auth.error;
+  const { user } = auth;
+
+  if (!user.isApiKeyUser) {
+    const usage = await checkUsageLimit(user.id, user.usageLimitCents);
+    if (!usage.allowed) {
+      return NextResponse.json(
+        {
+          error: `Usage limit reached. You've spent $${(usage.spentCents / 100).toFixed(2)} of your $${(usage.limitCents / 100).toFixed(2)} limit.`,
+        },
+        { status: 429 }
+      );
+    }
+  }
 
   const body = await req.json();
-  const { platform, topic, pillar } = body as {
+  const { platform, topic, pillar, campaignId } = body as {
     platform: Platform;
     topic: string;
     pillar?: string;
+    campaignId?: string;
   };
 
   if (!platform || !topic) {
@@ -26,7 +41,7 @@ export async function POST(req: Request) {
     );
   }
 
-  const org = await resolveOrgFromRequest(req, body);
+  const org = await resolveOrgFromRequest(req, body, user.orgId);
   const { brandContext, ragContext } = await assembleContext(org.id, topic);
   const prompt = buildContentGenerationPrompt(
     platform,
@@ -36,10 +51,21 @@ export async function POST(req: Request) {
     ragContext
   );
 
-  const { text } = await generateText({
+  const { text, usage } = await generateText({
     model: sonnet,
     prompt,
   });
+
+  if (!user.isApiKeyUser && usage) {
+    await recordUsage({
+      userId: user.id,
+      orgId: org.id,
+      model: "claude-sonnet-4-5-20250929",
+      route: "/api/content/generate",
+      inputTokens: usage.inputTokens ?? 0,
+      outputTokens: usage.outputTokens ?? 0,
+    });
+  }
 
   let parsed: { hook: string; body: string; cta: string; hashtags: string[]; pillar: string };
   try {
@@ -55,20 +81,16 @@ export async function POST(req: Request) {
     };
   }
 
-  const item: ContentItem = {
-    id: crypto.randomUUID(),
+  const item = await insertContent(org.id, {
     platform,
-    pillar: parsed.pillar || pillar || "General",
-    topic,
     hook: parsed.hook,
     body: parsed.body,
     cta: parsed.cta,
     hashtags: parsed.hashtags,
-    status: "draft",
-    createdAt: new Date(),
-  };
-
-  contentItems.set(item.id, item);
+    pillar: parsed.pillar || pillar || "General",
+    topic,
+    campaignId,
+  });
 
   return NextResponse.json(item);
 }

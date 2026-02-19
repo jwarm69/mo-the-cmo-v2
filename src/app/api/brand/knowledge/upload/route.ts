@@ -1,9 +1,10 @@
 import { NextResponse } from "next/server";
 import path from "path";
 import { promises as fs } from "fs";
-import { requireApiKey } from "@/lib/api/auth";
+import { requireAuth } from "@/lib/api/session";
+import { resolveOrgFromRequest } from "@/lib/api/org";
 import { parseFile } from "@/lib/knowledge/parsers";
-import { chunkText } from "@/lib/rag/ingest";
+import { chunkText, ingestDocument } from "@/lib/rag/ingest";
 
 export const runtime = "nodejs";
 
@@ -15,8 +16,9 @@ function sanitizeFilename(name: string): string {
 }
 
 export async function POST(req: Request) {
-  const authError = requireApiKey(req);
-  if (authError) return authError;
+  const auth = await requireAuth(req);
+  if (auth.error) return auth.error;
+  const { user } = auth;
 
   try {
     const formData = await req.formData();
@@ -25,6 +27,8 @@ export async function POST(req: Request) {
       (formData.get("orgSlug") as string) ||
       process.env.DEFAULT_ORG_SLUG ||
       "default-org";
+
+    const org = await resolveOrgFromRequest(req, { orgSlug }, user.orgId);
 
     const files = formData.getAll("files") as File[];
     const pastedText = formData.get("pastedText") as string | null;
@@ -57,11 +61,13 @@ export async function POST(req: Request) {
       const outputName = `${orgSlug}-${sanitized}.md`;
       await fs.writeFile(path.join(knowledgeDir, outputName), text, "utf-8");
 
-      const chunks = chunkText(text, { chunkSize: 1200, chunkOverlap: 150 });
+      // Ingest into DB with embeddings
+      const { chunkCount } = await ingestDocument(org.id, file.name, text, "file");
+
       results.push({
         name: outputName,
         originalName: file.name,
-        chunks: chunks.length,
+        chunks: chunkCount,
       });
     }
 
@@ -73,14 +79,17 @@ export async function POST(req: Request) {
         "utf-8"
       );
 
-      const chunks = chunkText(pastedText.trim(), {
-        chunkSize: 1200,
-        chunkOverlap: 150,
-      });
+      const { chunkCount } = await ingestDocument(
+        org.id,
+        "custom-context",
+        pastedText.trim(),
+        "manual"
+      );
+
       results.push({
         name: outputName,
         originalName: "pasted-text",
-        chunks: chunks.length,
+        chunks: chunkCount,
       });
     }
 

@@ -1,10 +1,11 @@
 /**
- * Long-term memory: persistent learnings.
+ * Long-term memory: persistent learnings with vector search.
  */
 
-import { desc, eq } from "drizzle-orm";
+import { desc, eq, sql, and, isNotNull } from "drizzle-orm";
 import { db } from "@/lib/db/client";
-import { agentLearnings } from "@/lib/db/schema";
+import { agentLearnings, learningEmbeddings } from "@/lib/db/schema";
+import { generateEmbedding } from "./embeddings";
 
 export interface Learning {
   id: string;
@@ -21,18 +22,49 @@ const confidenceWeight: Record<Learning["confidence"], number> = {
   validated: 4,
 };
 
-function tokenize(text: string): string[] {
-  return text
-    .toLowerCase()
-    .split(/[^a-z0-9]+/g)
-    .filter((token) => token.length >= 3);
-}
-
 export async function getRelevantLearnings(
   orgId: string,
   query: string,
   limit: number = 5
 ): Promise<Learning[]> {
+  // Try vector search first
+  try {
+    const queryEmbedding = await generateEmbedding(query);
+    if (queryEmbedding.length > 0) {
+      const embeddingStr = `[${queryEmbedding.join(",")}]`;
+
+      const rows = await db
+        .select({
+          id: agentLearnings.id,
+          insight: agentLearnings.insight,
+          category: agentLearnings.category,
+          confidence: agentLearnings.confidence,
+          weight: agentLearnings.weight,
+          similarity: sql<number>`1 - (${learningEmbeddings.embedding} <=> ${embeddingStr}::vector)`.as("similarity"),
+        })
+        .from(learningEmbeddings)
+        .innerJoin(
+          agentLearnings,
+          eq(learningEmbeddings.learningId, agentLearnings.id)
+        )
+        .where(
+          and(
+            eq(learningEmbeddings.orgId, orgId),
+            isNotNull(learningEmbeddings.embedding)
+          )
+        )
+        .orderBy(sql`${learningEmbeddings.embedding} <=> ${embeddingStr}::vector`)
+        .limit(limit);
+
+      if (rows.length > 0) {
+        return rows;
+      }
+    }
+  } catch {
+    // Fall through to recency-based fallback
+  }
+
+  // Fallback: recency-based with confidence weighting
   const rows = await db
     .select({
       id: agentLearnings.id,
@@ -44,19 +76,12 @@ export async function getRelevantLearnings(
     .from(agentLearnings)
     .where(eq(agentLearnings.orgId, orgId))
     .orderBy(desc(agentLearnings.updatedAt))
-    .limit(100);
+    .limit(50);
 
-  const tokens = tokenize(query);
-
-  const scored = rows.map((row) => {
-    const searchable = `${row.category} ${row.insight}`.toLowerCase();
-    const tokenScore =
-      tokens.length === 0
-        ? 0
-        : tokens.reduce((sum, token) => sum + (searchable.includes(token) ? 1 : 0), 0);
-    const score = tokenScore + confidenceWeight[row.confidence] + row.weight;
-    return { row, score };
-  });
+  const scored = rows.map((row) => ({
+    row,
+    score: confidenceWeight[row.confidence] + row.weight,
+  }));
 
   return scored
     .sort((a, b) => b.score - a.score)
@@ -85,6 +110,21 @@ export async function storeLearning(
       confidence: agentLearnings.confidence,
       weight: agentLearnings.weight,
     });
+
+  // Generate and store embedding for the learning
+  try {
+    const embeddingText = `${learning.category}: ${learning.insight}`;
+    const embedding = await generateEmbedding(embeddingText);
+    if (embedding.length > 0) {
+      await db.insert(learningEmbeddings).values({
+        learningId: created.id,
+        orgId,
+        embedding,
+      });
+    }
+  } catch {
+    // Non-critical — learning is stored even without embedding
+  }
 
   return created;
 }

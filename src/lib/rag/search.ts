@@ -1,11 +1,11 @@
 /**
- * RAG semantic search.
- * Uses lexical ranking over markdown knowledge files.
+ * RAG semantic search using pgvector cosine similarity.
  */
 
-import path from "path";
-import { promises as fs } from "fs";
-import { chunkText } from "./ingest";
+import { and, eq, isNotNull, sql } from "drizzle-orm";
+import { db } from "@/lib/db/client";
+import { knowledgeChunks, knowledgeDocuments } from "@/lib/db/schema";
+import { generateEmbedding } from "@/lib/memory/embeddings";
 
 export interface SearchResult {
   chunkId: string;
@@ -14,78 +14,51 @@ export interface SearchResult {
   documentTitle: string;
 }
 
-function tokenize(text: string): string[] {
-  return text
-    .toLowerCase()
-    .split(/[^a-z0-9]+/g)
-    .filter((token) => token.length >= 3);
-}
-
-function scoreChunk(queryTokens: string[], content: string, title: string): number {
-  const lowerContent = content.toLowerCase();
-  const lowerTitle = title.toLowerCase();
-  let score = 0;
-
-  for (const token of queryTokens) {
-    if (lowerContent.includes(token)) score += 1;
-    if (lowerTitle.includes(token)) score += 2;
-  }
-
-  return score;
-}
-
-async function loadMarkdownFiles(directory: string): Promise<string[]> {
-  try {
-    const entries = await fs.readdir(directory, { withFileTypes: true });
-    return entries
-      .filter((entry) => entry.isFile() && entry.name.endsWith(".md"))
-      .map((entry) => path.join(directory, entry.name));
-  } catch {
-    return [];
-  }
-}
-
 export async function searchKnowledge(
   orgId: string,
   query: string,
   limit: number = 5,
-  orgSlug?: string
+  _orgSlug?: string
 ): Promise<SearchResult[]> {
-  const knowledgeRoot = path.join(process.cwd(), "knowledge");
-  const orgKnowledgeRoot = orgSlug ? path.join(knowledgeRoot, orgSlug) : "";
+  if (!query.trim()) return [];
 
-  const orgFiles = orgKnowledgeRoot ? await loadMarkdownFiles(orgKnowledgeRoot) : [];
-  const fallbackFiles = await loadMarkdownFiles(knowledgeRoot);
-  const files = orgFiles.length > 0 ? orgFiles : fallbackFiles;
-
-  if (files.length === 0) return [];
-
-  const queryTokens = tokenize(query);
-  const ranked: SearchResult[] = [];
-
-  for (const filePath of files) {
-    const raw = await fs.readFile(filePath, "utf8");
-    const chunks = chunkText(raw, { chunkSize: 1200, chunkOverlap: 150 });
-    const documentTitle = path.basename(filePath, ".md");
-
-    chunks.forEach((chunk, index) => {
-      const similarity =
-        queryTokens.length > 0
-          ? scoreChunk(queryTokens, chunk, documentTitle)
-          : index === 0
-            ? 1
-            : 0;
-
-      if (similarity > 0) {
-        ranked.push({
-          chunkId: `${orgId}:${documentTitle}:${index}`,
-          content: chunk,
-          similarity,
-          documentTitle,
-        });
-      }
-    });
+  let queryEmbedding: number[];
+  try {
+    queryEmbedding = await generateEmbedding(query);
+  } catch {
+    // If embedding fails, fall back to empty results
+    return [];
   }
 
-  return ranked.sort((a, b) => b.similarity - a.similarity).slice(0, limit);
+  if (queryEmbedding.length === 0) return [];
+
+  const embeddingStr = `[${queryEmbedding.join(",")}]`;
+
+  const rows = await db
+    .select({
+      chunkId: knowledgeChunks.id,
+      content: knowledgeChunks.content,
+      similarity: sql<number>`1 - (${knowledgeChunks.embedding} <=> ${embeddingStr}::vector)`.as("similarity"),
+      documentTitle: knowledgeDocuments.title,
+    })
+    .from(knowledgeChunks)
+    .innerJoin(
+      knowledgeDocuments,
+      eq(knowledgeChunks.documentId, knowledgeDocuments.id)
+    )
+    .where(
+      and(
+        eq(knowledgeChunks.orgId, orgId),
+        isNotNull(knowledgeChunks.embedding)
+      )
+    )
+    .orderBy(sql`${knowledgeChunks.embedding} <=> ${embeddingStr}::vector`)
+    .limit(limit);
+
+  return rows.map((row) => ({
+    chunkId: row.chunkId,
+    content: row.content,
+    similarity: row.similarity,
+    documentTitle: row.documentTitle,
+  }));
 }

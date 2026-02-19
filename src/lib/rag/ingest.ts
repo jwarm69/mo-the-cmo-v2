@@ -1,11 +1,12 @@
 /**
  * RAG ingestion pipeline.
- * Chunks source documents and persists them for retrieval.
+ * Chunks source documents, generates embeddings, and persists them.
  */
 
 import { eq } from "drizzle-orm";
 import { db } from "@/lib/db/client";
 import { knowledgeChunks, knowledgeDocuments } from "@/lib/db/schema";
+import { generateEmbeddings } from "@/lib/memory/embeddings";
 
 export interface ChunkOptions {
   chunkSize?: number;
@@ -55,12 +56,23 @@ export async function ingestDocument(
     .returning({ id: knowledgeDocuments.id });
 
   if (chunks.length > 0) {
+    // Generate embeddings for all chunks
+    let embeddings: number[][] = [];
+    try {
+      embeddings = await generateEmbeddings(
+        chunks.map((c) => c.slice(0, 8000))
+      );
+    } catch {
+      // If embedding generation fails, store chunks without embeddings
+    }
+
     await db.insert(knowledgeChunks).values(
       chunks.map((chunk, index) => ({
         documentId: document.id,
         orgId,
         content: chunk,
         chunkIndex: index,
+        embedding: embeddings[index] || null,
       }))
     );
   }

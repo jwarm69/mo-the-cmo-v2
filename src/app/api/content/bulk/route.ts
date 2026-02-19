@@ -3,11 +3,12 @@ import { generateText } from "ai";
 import { gpt4oMini } from "@/lib/ai/providers/openai";
 import { buildContentGenerationPrompt } from "@/lib/ai/prompts/system";
 import { assembleContext } from "@/lib/rag/context";
-import { requireApiKey } from "@/lib/api/auth";
+import { requireAuth } from "@/lib/api/session";
 import { resolveOrgFromRequest } from "@/lib/api/org";
-import { contentItems, calendarSlots } from "@/lib/store";
-import type { ContentItem, CalendarSlot, Platform } from "@/lib/store/types";
+import { insertContent } from "@/lib/db/content";
+import { checkUsageLimit, recordUsage } from "@/lib/usage/tracker";
 import { EXAMPLE_BRAND_SEED } from "@/lib/seed/bite-club";
+import type { Platform } from "@/lib/store/types";
 
 const WEEKLY_SCHEDULE: { day: number; time: string; platform: Platform }[] = [
   { day: 1, time: "12:00", platform: "tiktok" },
@@ -46,10 +47,26 @@ const TOPICS = [
 ];
 
 export async function POST(req: Request) {
-  const authError = requireApiKey(req);
-  if (authError) return authError;
+  const auth = await requireAuth(req);
+  if (auth.error) return auth.error;
+  const { user } = auth;
 
-  const org = await resolveOrgFromRequest(req);
+  if (!user.isApiKeyUser) {
+    const usage = await checkUsageLimit(user.id, user.usageLimitCents);
+    if (!usage.allowed) {
+      return NextResponse.json(
+        {
+          error: `Usage limit reached. You've spent $${(usage.spentCents / 100).toFixed(2)} of your $${(usage.limitCents / 100).toFixed(2)} limit.`,
+        },
+        { status: 429 }
+      );
+    }
+  }
+
+  const body = await req.json().catch(() => ({}));
+  const { campaignId } = body as { campaignId?: string };
+
+  const org = await resolveOrgFromRequest(req, body, user.orgId);
 
   const pillars = EXAMPLE_BRAND_SEED.contentPillars;
   const { brandContext } = await assembleContext(org.id, "weekly content plan");
@@ -81,10 +98,21 @@ export async function POST(req: Request) {
         brandContext
       );
 
-      const { text } = await generateText({
+      const { text, usage } = await generateText({
         model: gpt4oMini,
         prompt,
       });
+
+      if (!user.isApiKeyUser && usage) {
+        await recordUsage({
+          userId: user.id,
+          orgId: org.id,
+          model: "gpt-4o-mini",
+          route: "/api/content/bulk",
+          inputTokens: usage.inputTokens ?? 0,
+          outputTokens: usage.outputTokens ?? 0,
+        });
+      }
 
       let parsed: { hook: string; body: string; cta: string; hashtags: string[]; pillar: string };
       try {
@@ -100,30 +128,18 @@ export async function POST(req: Request) {
       slotDate.setDate(monday.getDate() + daysFromMonday);
       const dateStr = slotDate.toISOString().split("T")[0];
 
-      const item: ContentItem = {
-        id: crypto.randomUUID(),
+      const item = await insertContent(org.id, {
         platform: slot.platform,
-        pillar: parsed.pillar || pillar,
-        topic,
         hook: parsed.hook,
         body: parsed.body,
         cta: parsed.cta,
         hashtags: parsed.hashtags,
-        status: "draft",
+        pillar: parsed.pillar || pillar,
+        topic,
         scheduledDate: dateStr,
         scheduledTime: slot.time,
-        createdAt: new Date(),
-      };
-      contentItems.set(item.id, item);
-
-      const calSlot: CalendarSlot = {
-        id: crypto.randomUUID(),
-        dayOfWeek: slot.day,
-        time: slot.time,
-        platform: slot.platform,
-        contentItemId: item.id,
-      };
-      calendarSlots.set(calSlot.id, calSlot);
+        campaignId,
+      });
 
       return {
         ...item,
