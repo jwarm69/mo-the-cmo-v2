@@ -121,12 +121,17 @@ export function buildContextualPrompt(
   brandContext?: string,
   ragContext?: string,
   learnings?: string,
-  preferences?: string
+  preferences?: string,
+  currentState?: string
 ): string {
   let prompt = MO_SYSTEM_PROMPT;
 
   if (brandContext) {
     prompt += `\n\n## Brand Context\n${brandContext}`;
+  }
+
+  if (currentState) {
+    prompt += `\n\n## Current State\nHere is the current state of the user's content pipeline and campaigns. Reference this data when answering questions about what's scheduled, what's been created, or what needs attention:\n${currentState}`;
   }
 
   if (ragContext) {

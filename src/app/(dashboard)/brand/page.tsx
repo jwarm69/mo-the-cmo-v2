@@ -26,6 +26,7 @@ import {
   CLIENT_DEFAULT_ORG_SLUG,
 } from "@/lib/client-config";
 import { KnowledgeList } from "@/components/content/knowledge-list";
+import { KnowledgeUpload } from "@/components/brand/knowledge-upload";
 
 export default function BrandPage() {
   const [brand, setBrand] = useState<BrandProfileInput>({
@@ -36,6 +37,7 @@ export default function BrandPage() {
   const [isSaving, setIsSaving] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [knowledgeKey, setKnowledgeKey] = useState(0);
 
   useEffect(() => {
     const loadBrandProfile = async () => {
@@ -433,14 +435,27 @@ export default function BrandPage() {
         <TabsContent value="knowledge" className="space-y-4">
           <Card>
             <CardHeader>
-              <CardTitle>Knowledge Base</CardTitle>
+              <CardTitle>Upload Documents</CardTitle>
               <CardDescription>
-                Marketing documents that Mo uses to generate brand-aware content
-                via RAG.
+                Upload brand docs, blog posts, or competitor research. Mo uses
+                these to generate brand-aware content via RAG.
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <KnowledgeList />
+              <KnowledgeUpload
+                onUploaded={() => setKnowledgeKey((k) => k + 1)}
+              />
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader>
+              <CardTitle>Indexed Documents</CardTitle>
+              <CardDescription>
+                Documents currently in Mo&apos;s knowledge base.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <KnowledgeList key={knowledgeKey} />
             </CardContent>
           </Card>
         </TabsContent>

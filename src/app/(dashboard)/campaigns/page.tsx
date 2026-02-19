@@ -95,6 +95,7 @@ export default function CampaignsPage() {
               campaign={campaign}
               onStatusChange={handleStatusChange}
               onDelete={handleDelete}
+              onContentGenerated={fetchCampaigns}
             />
           ))}
         </div>

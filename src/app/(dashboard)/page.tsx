@@ -18,41 +18,21 @@ import {
   MessageSquare,
   Megaphone,
   Sparkles,
+  Clock,
 } from "lucide-react";
 import Link from "next/link";
 import { buildClientApiHeaders, CLIENT_DEFAULT_ORG_SLUG, CLIENT_DEFAULT_ORG_NAME } from "@/lib/client-config";
 import { DEFAULT_BRAND_PROFILE } from "@/lib/brand/defaults";
+import { IdeaCapture } from "@/components/dashboard/idea-capture";
+import { SuggestionCards } from "@/components/dashboard/suggestion-cards";
 
-const stats = [
-  {
-    title: "Content Pieces",
-    value: "0",
-    description: "This month",
-    icon: FileText,
-    change: "Getting started",
-  },
-  {
-    title: "Engagement Rate",
-    value: "--",
-    description: "Avg across platforms",
-    icon: TrendingUp,
-    change: "No data yet",
-  },
-  {
-    title: "Scheduled",
-    value: "0",
-    description: "Upcoming posts",
-    icon: Calendar,
-    change: "Queue empty",
-  },
-  {
-    title: "Learnings",
-    value: "0",
-    description: "Mo's insights",
-    icon: Brain,
-    change: "Learning...",
-  },
-];
+interface DashboardStats {
+  contentThisMonth: number;
+  scheduled: number;
+  pendingApproval: number;
+  learnings: number;
+  knowledgeDocs: number;
+}
 
 const quickActions = [
   {
@@ -84,18 +64,29 @@ const quickActions = [
 export default function DashboardPage() {
   const [needsSetup, setNeedsSetup] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [stats, setStats] = useState<DashboardStats | null>(null);
 
   useEffect(() => {
-    async function checkBrand() {
+    async function loadDashboard() {
       try {
-        const res = await fetch(
-          `/api/brand?orgSlug=${encodeURIComponent(CLIENT_DEFAULT_ORG_SLUG)}`,
-          { headers: buildClientApiHeaders() }
-        );
-        const data = await res.json();
-        const profile = data.profile;
+        const [brandRes, statsRes] = await Promise.all([
+          fetch(
+            `/api/brand?orgSlug=${encodeURIComponent(CLIENT_DEFAULT_ORG_SLUG)}`,
+            { headers: buildClientApiHeaders() }
+          ),
+          fetch("/api/dashboard/stats", {
+            headers: buildClientApiHeaders(),
+          }),
+        ]);
+
+        const brandData = await brandRes.json();
+        const profile = brandData.profile;
         if (!profile || profile.voice === DEFAULT_BRAND_PROFILE.voice) {
           setNeedsSetup(true);
+        }
+
+        if (statsRes.ok) {
+          setStats(await statsRes.json());
         }
       } catch {
         setNeedsSetup(true);
@@ -103,8 +94,47 @@ export default function DashboardPage() {
         setIsLoading(false);
       }
     }
-    checkBrand();
+    loadDashboard();
   }, []);
+
+  const statCards = [
+    {
+      title: "Content Pieces",
+      value: stats?.contentThisMonth ?? 0,
+      description: "This month",
+      icon: FileText,
+      change: stats?.contentThisMonth
+        ? `${stats.contentThisMonth} created`
+        : "Getting started",
+    },
+    {
+      title: "Pending Approval",
+      value: stats?.pendingApproval ?? 0,
+      description: "Drafts & pending",
+      icon: Clock,
+      change: stats?.pendingApproval
+        ? `${stats.pendingApproval} to review`
+        : "Queue clear",
+    },
+    {
+      title: "Scheduled",
+      value: stats?.scheduled ?? 0,
+      description: "Upcoming posts",
+      icon: Calendar,
+      change: stats?.scheduled
+        ? `${stats.scheduled} queued`
+        : "Queue empty",
+    },
+    {
+      title: "Learnings",
+      value: stats?.learnings ?? 0,
+      description: "Mo's insights",
+      icon: Brain,
+      change: stats?.learnings
+        ? `${stats.learnings} stored`
+        : "Learning...",
+    },
+  ];
 
   return (
     <div className="space-y-6 md:space-y-8">
@@ -140,7 +170,7 @@ export default function DashboardPage() {
 
       {/* Stats Grid */}
       <div className="grid grid-cols-2 gap-3 md:gap-4 lg:grid-cols-4">
-        {stats.map((stat) => (
+        {statCards.map((stat) => (
           <Card key={stat.title}>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">
@@ -157,6 +187,12 @@ export default function DashboardPage() {
           </Card>
         ))}
       </div>
+
+      {/* Idea Capture */}
+      <IdeaCapture />
+
+      {/* Mo's Suggestions */}
+      <SuggestionCards />
 
       {/* Quick Actions */}
       <div>
@@ -194,8 +230,10 @@ export default function DashboardPage() {
           <div className="flex items-center gap-4">
             <Badge variant="outline">Online</Badge>
             <span className="text-sm text-muted-foreground">
-              Mo is ready to help with your marketing. Start a chat or create a
-              campaign to get going.
+              {stats?.knowledgeDocs
+                ? `${stats.knowledgeDocs} knowledge docs indexed. `
+                : ""}
+              Mo is ready to help with your marketing.
             </span>
           </div>
         </CardContent>

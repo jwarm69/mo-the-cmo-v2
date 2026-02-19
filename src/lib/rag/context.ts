@@ -2,9 +2,15 @@
  * Context assembly for prompts.
  */
 
-import { and, desc, eq } from "drizzle-orm";
+import { and, desc, eq, gte, sql, count } from "drizzle-orm";
 import { db } from "@/lib/db/client";
-import { agentPreferences, brandProfiles, organizations } from "@/lib/db/schema";
+import {
+  agentPreferences,
+  brandProfiles,
+  campaigns,
+  contentItems,
+  organizations,
+} from "@/lib/db/schema";
 import { getRelevantLearnings } from "@/lib/memory/long-term";
 import { searchKnowledge } from "./search";
 import { normalizeBrandProfile } from "@/lib/brand/defaults";
@@ -38,6 +44,7 @@ export async function assembleContext(
   ragContext: string;
   learnings: string;
   preferences: string;
+  currentState: string;
 }> {
   const [org] = await db
     .select({ slug: organizations.slug, name: organizations.name })
@@ -88,6 +95,108 @@ export async function assembleContext(
     .orderBy(desc(agentPreferences.updatedAt))
     .limit(8);
 
+  // Fetch current state for situational awareness
+  const startOfMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
+  const [recentContent, activeCampaigns, pillarCounts] = await Promise.all([
+    // Last 10 content items
+    db
+      .select({
+        platform: contentItems.platform,
+        status: contentItems.status,
+        title: contentItems.title,
+        metadata: contentItems.metadata,
+        scheduledAt: contentItems.scheduledAt,
+        createdAt: contentItems.createdAt,
+      })
+      .from(contentItems)
+      .where(eq(contentItems.orgId, orgId))
+      .orderBy(desc(contentItems.createdAt))
+      .limit(10),
+    // Active campaigns
+    db
+      .select({
+        name: campaigns.name,
+        objective: campaigns.objective,
+        platforms: campaigns.platforms,
+        startDate: campaigns.startDate,
+        endDate: campaigns.endDate,
+      })
+      .from(campaigns)
+      .where(and(eq(campaigns.orgId, orgId), eq(campaigns.status, "active"))),
+    // Content pillar distribution this month
+    db
+      .select({ metadata: contentItems.metadata })
+      .from(contentItems)
+      .where(
+        and(
+          eq(contentItems.orgId, orgId),
+          gte(contentItems.createdAt, startOfMonth)
+        )
+      ),
+  ]);
+
+  // Build current state string
+  const stateLines: string[] = [];
+
+  if (recentContent.length > 0) {
+    stateLines.push("Recent Content:");
+    for (const c of recentContent) {
+      const meta = (c.metadata ?? {}) as Record<string, unknown>;
+      const pillar = (meta.pillar as string) || "General";
+      const scheduled = c.scheduledAt
+        ? ` scheduled=${new Date(c.scheduledAt).toISOString().split("T")[0]}`
+        : "";
+      stateLines.push(
+        `- [${c.platform}] ${c.title || "(untitled)"} | status=${c.status} | pillar=${pillar}${scheduled}`
+      );
+    }
+  } else {
+    stateLines.push("No content created yet.");
+  }
+
+  if (activeCampaigns.length > 0) {
+    stateLines.push("\nActive Campaigns:");
+    for (const camp of activeCampaigns) {
+      const platforms = (camp.platforms as string[])?.join(", ") || "none";
+      const dates = [
+        camp.startDate ? new Date(camp.startDate).toISOString().split("T")[0] : "?",
+        camp.endDate ? new Date(camp.endDate).toISOString().split("T")[0] : "ongoing",
+      ].join(" to ");
+      stateLines.push(
+        `- "${camp.name}" | objective=${camp.objective || "none"} | platforms=${platforms} | ${dates}`
+      );
+    }
+  }
+
+  // Pillar balance this month
+  if (pillarCounts.length > 0) {
+    const pillarMap: Record<string, number> = {};
+    for (const row of pillarCounts) {
+      const meta = (row.metadata ?? {}) as Record<string, unknown>;
+      const p = (meta.pillar as string) || "General";
+      pillarMap[p] = (pillarMap[p] || 0) + 1;
+    }
+    const total = Object.values(pillarMap).reduce((a, b) => a + b, 0);
+    stateLines.push("\nContent Pillar Distribution (this month):");
+    for (const [name, cnt] of Object.entries(pillarMap)) {
+      const pct = Math.round((cnt / total) * 100);
+      stateLines.push(`- ${name}: ${cnt} pieces (${pct}%)`);
+    }
+    // Compare with targets
+    const targetPillars = brand.contentPillars;
+    for (const target of targetPillars) {
+      const actual = pillarMap[target.name] || 0;
+      const actualPct = total > 0 ? Math.round((actual / total) * 100) : 0;
+      if (Math.abs(target.ratio - actualPct) > 10) {
+        stateLines.push(
+          `  ⚠ ${target.name}: target=${target.ratio}%, actual=${actualPct}%`
+        );
+      }
+    }
+  }
+
+  const currentState = stateLines.join("\n");
+
   return {
     brandContext: formatBrandContext(brand),
     ragContext: knowledgeResults
@@ -108,5 +217,6 @@ export async function assembleContext(
           `(${index + 1}) ${preference.category}: ${preference.preference} (strength=${preference.strength})`
       )
       .join("\n"),
+    currentState,
   };
 }

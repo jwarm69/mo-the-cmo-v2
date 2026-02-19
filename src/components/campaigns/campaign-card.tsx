@@ -9,7 +9,9 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { MoreHorizontal, Trash2, Calendar, DollarSign } from "lucide-react";
+import { MoreHorizontal, Trash2, Calendar, DollarSign, Sparkles } from "lucide-react";
+import { useState } from "react";
+import { CampaignGenerateDialog } from "./campaign-generate-dialog";
 
 interface Campaign {
   id: string;
@@ -54,12 +56,17 @@ export function CampaignCard({
   campaign,
   onStatusChange,
   onDelete,
+  onContentGenerated,
 }: {
   campaign: Campaign;
   onStatusChange?: (id: string, status: string) => void;
   onDelete?: (id: string) => void;
+  onContentGenerated?: () => void;
 }) {
+  const [generateOpen, setGenerateOpen] = useState(false);
+
   return (
+    <>
     <Card>
       <CardHeader className="pb-2">
         <div className="flex items-center justify-between">
@@ -157,7 +164,25 @@ export function CampaignCard({
             </span>
           )}
         </div>
+        {(campaign.status === "draft" || campaign.status === "active") && (
+          <Button
+            variant="outline"
+            size="sm"
+            className="w-full mt-2"
+            onClick={() => setGenerateOpen(true)}
+          >
+            <Sparkles className="mr-2 h-3 w-3" />
+            Generate Content
+          </Button>
+        )}
       </CardContent>
     </Card>
+    <CampaignGenerateDialog
+      campaign={campaign}
+      open={generateOpen}
+      onOpenChange={setGenerateOpen}
+      onGenerated={onContentGenerated}
+    />
+    </>
   );
 }
