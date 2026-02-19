@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { eq } from "drizzle-orm";
 import { db } from "@/lib/db/client";
 import { brandProfiles } from "@/lib/db/schema";
-import { requireApiKey } from "@/lib/api/auth";
+import { requireAuth } from "@/lib/api/session";
 import { resolveOrgFromRequest } from "@/lib/api/org";
 import {
   DEFAULT_BRAND_PROFILE,
@@ -32,11 +32,12 @@ function sanitizeBrandPayload(payload: BrandPayload): BrandProfileInput {
 }
 
 export async function GET(req: Request) {
-  const authError = requireApiKey(req);
-  if (authError) return authError;
+  const auth = await requireAuth(req);
+  if (auth.error) return auth.error;
+  const { user } = auth;
 
   try {
-    const org = await resolveOrgFromRequest(req);
+    const org = await resolveOrgFromRequest(req, undefined, user.orgId);
 
     const profiles = await db
       .select()
@@ -59,12 +60,13 @@ export async function GET(req: Request) {
 }
 
 export async function POST(req: Request) {
-  const authError = requireApiKey(req);
-  if (authError) return authError;
+  const auth = await requireAuth(req);
+  if (auth.error) return auth.error;
+  const { user } = auth;
 
   try {
     const body = (await req.json()) as BrandPayload;
-    const org = await resolveOrgFromRequest(req, body);
+    const org = await resolveOrgFromRequest(req, body, user.orgId);
     const profileData = sanitizeBrandPayload(body);
 
     const [profile] = await db

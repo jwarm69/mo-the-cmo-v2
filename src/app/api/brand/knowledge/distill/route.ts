@@ -2,8 +2,10 @@ import { NextResponse } from "next/server";
 import path from "path";
 import { promises as fs } from "fs";
 import { generateText } from "ai";
-import { requireApiKey } from "@/lib/api/auth";
+import { requireAuth } from "@/lib/api/session";
+import { resolveOrgFromRequest } from "@/lib/api/org";
 import { routeTask } from "@/lib/ai/model-router";
+import { checkUsageLimit, recordUsage } from "@/lib/usage/tracker";
 
 export const runtime = "nodejs";
 
@@ -61,13 +63,25 @@ function buildBrandContextBlock(brandContext: BrandContext): string {
 }
 
 export async function POST(req: Request) {
-  const authError = requireApiKey(req);
-  if (authError) return authError;
+  const auth = await requireAuth(req);
+  if (auth.error) return auth.error;
+  const { user } = auth;
+
+  if (!user.isApiKeyUser) {
+    const usage = await checkUsageLimit(user.id, user.usageLimitCents);
+    if (!usage.allowed) {
+      return NextResponse.json(
+        {
+          error: `Usage limit reached. You've spent $${(usage.spentCents / 100).toFixed(2)} of your $${(usage.limitCents / 100).toFixed(2)} limit.`,
+        },
+        { status: 429 }
+      );
+    }
+  }
 
   try {
     const body = await req.json();
-    const orgSlug =
-      body.orgSlug || process.env.DEFAULT_ORG_SLUG || "default-org";
+    const org = await resolveOrgFromRequest(req, body, user.orgId);
     const brandContext: BrandContext = body.brandContext || {};
 
     const knowledgeDir = path.join(process.cwd(), "knowledge");
@@ -128,20 +142,42 @@ Otherwise, produce a well-structured Markdown document with clear headings, bull
 ## Source Documents
 ${combinedText}`;
 
-      const { text } = await generateText({ model, prompt });
+      const { text, usage } = await generateText({ model, prompt });
+
+      if (!user.isApiKeyUser && usage) {
+        await recordUsage({
+          userId: user.id,
+          orgId: org.id,
+          model: "gpt-4o",
+          route: "/api/brand/knowledge/distill",
+          inputTokens: usage.inputTokens ?? 0,
+          outputTokens: usage.outputTokens ?? 0,
+        });
+      }
 
       if (text.trim() === "NO_RELEVANT_CONTENT") {
         continue;
       }
 
-      const filename = `${orgSlug}-${category.key}.md`;
+      const filename = `${org.slug}-${category.key}.md`;
       await fs.writeFile(path.join(knowledgeDir, filename), text, "utf-8");
 
       const summaryPrompt = `Summarize the following marketing knowledge document in one sentence (max 20 words):\n\n${text.slice(0, 2000)}`;
-      const { text: summary } = await generateText({
+      const { text: summary, usage: summaryUsage } = await generateText({
         model,
         prompt: summaryPrompt,
       });
+
+      if (!user.isApiKeyUser && summaryUsage) {
+        await recordUsage({
+          userId: user.id,
+          orgId: org.id,
+          model: "gpt-4o",
+          route: "/api/brand/knowledge/distill",
+          inputTokens: summaryUsage.inputTokens ?? 0,
+          outputTokens: summaryUsage.outputTokens ?? 0,
+        });
+      }
 
       distilled.push({
         category: category.title,

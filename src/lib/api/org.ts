@@ -41,10 +41,37 @@ function slugToName(slug: string): string {
     .join(" ");
 }
 
+/**
+ * Resolve the organization from the request. Priority:
+ * 1. userOrgId (from authenticated user profile)
+ * 2. orgSlug in request body
+ * 3. x-org-slug header
+ * 4. orgSlug query parameter
+ * 5. DEFAULT_ORG_SLUG env var
+ * 6. Fallback: "default-org"
+ */
 export async function resolveOrgFromRequest(
   req: Request,
-  body?: unknown
+  body?: unknown,
+  userOrgId?: string | null
 ): Promise<ResolvedOrg> {
+  // If the authenticated user has an org assigned, use it first
+  if (userOrgId) {
+    const existing = await db
+      .select({
+        id: organizations.id,
+        slug: organizations.slug,
+        name: organizations.name,
+      })
+      .from(organizations)
+      .where(eq(organizations.id, userOrgId))
+      .limit(1);
+
+    if (existing[0]) {
+      return existing[0];
+    }
+  }
+
   const url = new URL(req.url);
   const bodyRecord = asJsonRecord(body);
 

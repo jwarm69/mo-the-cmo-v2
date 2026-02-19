@@ -10,16 +10,13 @@ import { Badge } from "@/components/ui/badge";
 import { Bot, Send, User, Loader2 } from "lucide-react";
 import { useRef, useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
-import {
-  buildClientApiHeaders,
-  CLIENT_DEFAULT_ORG_NAME,
-} from "@/lib/client-config";
+import { CLIENT_DEFAULT_ORG_NAME, CLIENT_DEFAULT_ORG_SLUG } from "@/lib/client-config";
 
 export function ChatInterface() {
   const { messages, sendMessage, status } = useChat({
     transport: new DefaultChatTransport({
       api: "/api/chat",
-      headers: buildClientApiHeaders(),
+      headers: { "x-org-slug": CLIENT_DEFAULT_ORG_SLUG },
     }),
   });
 

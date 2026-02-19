@@ -73,6 +73,42 @@ export const organizations = pgTable("organizations", {
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 
+// ─── User Profiles ──────────────────────────────────────────────────
+
+export const userProfiles = pgTable("user_profiles", {
+  id: uuid("id").primaryKey(), // matches auth.users.id — NOT defaultRandom
+  email: text("email").notNull(),
+  displayName: text("display_name"),
+  orgId: uuid("org_id").references(() => organizations.id),
+  usageLimitCents: integer("usage_limit_cents").default(50).notNull(), // $0.50
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+// ─── Usage Tracking ─────────────────────────────────────────────────
+
+export const usageTracking = pgTable(
+  "usage_tracking",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id")
+      .references(() => userProfiles.id)
+      .notNull(),
+    orgId: uuid("org_id").references(() => organizations.id),
+    model: text("model").notNull(),
+    route: text("route").notNull(),
+    promptTokens: integer("prompt_tokens").default(0).notNull(),
+    completionTokens: integer("completion_tokens").default(0).notNull(),
+    totalTokens: integer("total_tokens").default(0).notNull(),
+    costCents: real("cost_cents").default(0).notNull(),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+  },
+  (table) => [
+    index("usage_tracking_user_idx").on(table.userId),
+    index("usage_tracking_user_created_idx").on(table.userId, table.createdAt),
+  ]
+);
+
 // ─── Brand Profiles ──────────────────────────────────────────────────
 
 export const brandProfiles = pgTable(
@@ -348,6 +384,8 @@ export const approvalRequests = pgTable("approval_requests", {
 
 // Type exports
 export type Organization = typeof organizations.$inferSelect;
+export type UserProfile = typeof userProfiles.$inferSelect;
+export type UsageTrackingRow = typeof usageTracking.$inferSelect;
 export type BrandProfile = typeof brandProfiles.$inferSelect;
 export type Campaign = typeof campaigns.$inferSelect;
 export type ContentItem = typeof contentItems.$inferSelect;
