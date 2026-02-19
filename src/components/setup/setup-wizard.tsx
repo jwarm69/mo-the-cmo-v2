@@ -21,10 +21,7 @@ import {
   DEFAULT_BRAND_PROFILE,
   type BrandProfileInput,
 } from "@/lib/brand/defaults";
-import {
-  buildClientApiHeaders,
-  CLIENT_DEFAULT_ORG_SLUG,
-} from "@/lib/client-config";
+import { buildClientApiHeaders } from "@/lib/client-config";
 import { StepBasics } from "./step-basics";
 import { StepVoice } from "./step-voice";
 import { StepCustomers } from "./step-customers";
@@ -150,6 +147,13 @@ export function SetupWizard() {
         };
       }
 
+      // Derive org slug from brand name
+      const orgSlug = finalData.name
+        .toLowerCase()
+        .trim()
+        .replace(/[^a-z0-9]+/g, "-")
+        .replace(/^-+|-+$/g, "") || "my-brand";
+
       const res = await fetch("/api/brand", {
         method: "PUT",
         headers: {
@@ -157,7 +161,8 @@ export function SetupWizard() {
           ...buildClientApiHeaders(),
         },
         body: JSON.stringify({
-          orgSlug: CLIENT_DEFAULT_ORG_SLUG,
+          orgSlug,
+          orgName: finalData.name,
           ...finalData,
         }),
       });

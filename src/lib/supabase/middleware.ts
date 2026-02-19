@@ -46,5 +46,8 @@ export async function updateSession(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
+  // Pass pathname to server components so layout can check it
+  supabaseResponse.headers.set("x-pathname", pathname);
+
   return supabaseResponse;
 }

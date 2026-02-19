@@ -1,10 +1,8 @@
+import { headers } from "next/headers";
 import { redirect } from "next/navigation";
-import { eq } from "drizzle-orm";
 import { Sidebar } from "@/components/dashboard/sidebar";
 import { Header } from "@/components/dashboard/header";
 import { getSessionUser } from "@/lib/api/session";
-import { db } from "@/lib/db/client";
-import { organizations, userProfiles } from "@/lib/db/schema";
 
 export default async function DashboardLayout({
   children,
@@ -17,26 +15,12 @@ export default async function DashboardLayout({
     redirect("/login");
   }
 
-  // Auto-assign default org if user has no org
-  let orgId = user.orgId;
-  if (!orgId) {
-    const defaultSlug =
-      process.env.DEFAULT_ORG_SLUG ??
-      process.env.NEXT_PUBLIC_DEFAULT_ORG_SLUG ??
-      "default-org";
-
-    const orgs = await db
-      .select({ id: organizations.id })
-      .from(organizations)
-      .where(eq(organizations.slug, defaultSlug))
-      .limit(1);
-
-    if (orgs[0]) {
-      orgId = orgs[0].id;
-      await db
-        .update(userProfiles)
-        .set({ orgId, updatedAt: new Date() })
-        .where(eq(userProfiles.id, user.id));
+  // If user has no org, send them to setup wizard (unless already there)
+  if (!user.orgId) {
+    const headersList = await headers();
+    const pathname = headersList.get("x-pathname") ?? "";
+    if (!pathname.startsWith("/setup")) {
+      redirect("/setup");
     }
   }
 
