@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { eq } from "drizzle-orm";
 import { generateText } from "ai";
 import { gpt4oMini } from "@/lib/ai/providers/openai";
 import { buildContentGenerationPrompt } from "@/lib/ai/prompts/system";
@@ -7,8 +8,9 @@ import { requireAuth } from "@/lib/api/session";
 import { resolveOrgFromRequest } from "@/lib/api/org";
 import { insertContent } from "@/lib/db/content";
 import { checkUsageLimit, recordUsage } from "@/lib/usage/tracker";
-import { EXAMPLE_BRAND_SEED } from "@/lib/seed/bite-club";
-import type { Platform } from "@/lib/store/types";
+import { db } from "@/lib/db/client";
+import { brandProfiles } from "@/lib/db/schema";
+import type { Platform } from "@/lib/types";
 
 const WEEKLY_SCHEDULE: { day: number; time: string; platform: Platform }[] = [
   { day: 1, time: "12:00", platform: "tiktok" },
@@ -29,22 +31,52 @@ const WEEKLY_SCHEDULE: { day: number; time: string; platform: Platform }[] = [
 
 const DAY_NAMES = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
-const TOPICS = [
-  "How much you save skipping delivery fees this week",
-  "Day in the life: eating on campus with Bite Club",
-  "Hidden gem restaurant near UF campus",
-  "Study snack haul under $10",
-  "DoorDash vs Bite Club receipt comparison",
-  "Best lunch spots between classes",
-  "How to eat well on a student budget",
-  "Campus food hack: order ahead trick",
-  "Student testimonial: switching from meal plan",
-  "Game day food prep guide",
-  "Top 3 late night eats near campus",
-  "Weekly savings challenge results",
-  "New restaurant partner spotlight",
-  "Finals week fuel: best energy meals",
-];
+function pickWeightedPillar(
+  pillars: { name: string; ratio: number }[]
+): string {
+  const rand = Math.random() * 100;
+  let cumulative = 0;
+  for (const p of pillars) {
+    cumulative += p.ratio;
+    if (rand <= cumulative) {
+      return p.name;
+    }
+  }
+  return pillars[0]?.name ?? "General";
+}
+
+function generateTopicsFromProfile(brand: {
+  contentPillars?: { name: string; description: string }[] | null;
+  targetAudience?: { painPoints?: string[]; goals?: string[] } | null;
+  name: string;
+}): string[] {
+  const topics: string[] = [];
+
+  // Derive topics from content pillar descriptions
+  if (brand.contentPillars) {
+    for (const pillar of brand.contentPillars) {
+      topics.push(`${pillar.name}: ${pillar.description.split(".")[0]}`);
+    }
+  }
+
+  // Derive topics from pain points
+  if (brand.targetAudience?.painPoints) {
+    for (const pain of brand.targetAudience.painPoints.slice(0, 5)) {
+      const short = pain.split("—")[0]?.trim() ?? pain;
+      topics.push(`How ${brand.name} solves: ${short}`);
+    }
+  }
+
+  // Derive topics from goals
+  if (brand.targetAudience?.goals) {
+    for (const goal of brand.targetAudience.goals.slice(0, 4)) {
+      const short = goal.split("—")[0]?.trim() ?? goal;
+      topics.push(short);
+    }
+  }
+
+  return topics.length > 0 ? topics : [`What makes ${brand.name} different`];
+}
 
 export async function POST(req: Request) {
   const auth = await requireAuth(req);
@@ -64,11 +96,37 @@ export async function POST(req: Request) {
   }
 
   const body = await req.json().catch(() => ({}));
-  const { campaignId } = body as { campaignId?: string };
+  const { campaignId, topics: requestTopics } = body as {
+    campaignId?: string;
+    topics?: string[];
+  };
 
   const org = await resolveOrgFromRequest(req, body, user.orgId);
 
-  const pillars = EXAMPLE_BRAND_SEED.contentPillars;
+  // Fetch org's brand profile from DB
+  const [brand] = await db
+    .select()
+    .from(brandProfiles)
+    .where(eq(brandProfiles.orgId, org.id))
+    .limit(1);
+
+  if (!brand) {
+    return NextResponse.json(
+      {
+        error: `No brand profile found for org "${org.slug}". Create a brand profile first.`,
+      },
+      { status: 400 }
+    );
+  }
+
+  const pillars = brand.contentPillars ?? [
+    { name: "General", ratio: 100, description: "General content" },
+  ];
+  const topics =
+    requestTopics && requestTopics.length > 0
+      ? requestTopics
+      : generateTopicsFromProfile(brand);
+
   const { brandContext } = await assembleContext(org.id, "weekly content plan");
 
   // Get the Monday of the current week
@@ -78,18 +136,8 @@ export async function POST(req: Request) {
 
   const results = await Promise.all(
     WEEKLY_SCHEDULE.map(async (slot, i) => {
-      const topic = TOPICS[i % TOPICS.length];
-      // Weighted random pillar selection based on ratios
-      const rand = Math.random() * 100;
-      let cumulative = 0;
-      let pillar = pillars[0].name;
-      for (const p of pillars) {
-        cumulative += p.ratio;
-        if (rand <= cumulative) {
-          pillar = p.name;
-          break;
-        }
-      }
+      const topic = topics[i % topics.length];
+      const pillar = pickWeightedPillar(pillars);
 
       const prompt = buildContentGenerationPrompt(
         slot.platform,
@@ -114,9 +162,18 @@ export async function POST(req: Request) {
         });
       }
 
-      let parsed: { hook: string; body: string; cta: string; hashtags: string[]; pillar: string };
+      let parsed: {
+        hook: string;
+        body: string;
+        cta: string;
+        hashtags: string[];
+        pillar: string;
+      };
       try {
-        const cleaned = text.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
+        const cleaned = text
+          .replace(/```json\n?/g, "")
+          .replace(/```\n?/g, "")
+          .trim();
         parsed = JSON.parse(cleaned);
       } catch {
         parsed = { hook: "", body: text, cta: "", hashtags: [], pillar };

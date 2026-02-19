@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Check, Trash2, Clock, Eye } from "lucide-react";
-import type { ContentItem } from "@/lib/store/types";
+import type { ContentItem } from "@/lib/types";
 
 const PLATFORM_COLORS: Record<string, string> = {
   tiktok: "bg-pink-500/10 text-pink-700 border-pink-200",

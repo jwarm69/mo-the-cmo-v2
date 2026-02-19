@@ -17,8 +17,7 @@ Mo is a multi-tenant AI CMO app (Next.js + Drizzle + Postgres) with:
 Copy `.env.example` to `.env.local` and set values:
 
 - `DATABASE_URL`
-- `APP_API_KEY`
-- `NEXT_PUBLIC_APP_API_KEY` (same value as `APP_API_KEY`)
+- `APP_API_KEY` (server-only — never use `NEXT_PUBLIC_` prefix)
 - `DEFAULT_ORG_SLUG` / `NEXT_PUBLIC_DEFAULT_ORG_SLUG`
 - `DEFAULT_ORG_NAME` / `NEXT_PUBLIC_DEFAULT_ORG_NAME`
 - `ANTHROPIC_API_KEY`
@@ -52,6 +51,7 @@ For multi-company usage, create one folder per company slug and add their docs.
 
 ## 6. Security Notes
 
-- API routes require `APP_API_KEY`.
-- Do not expose the app publicly without adding proper user auth (Supabase/Auth0/etc.) and tenant membership checks.
+- API routes require `APP_API_KEY` (server-only). Never expose it to the browser via `NEXT_PUBLIC_*` env vars.
+- Browser-based auth uses Supabase httpOnly cookies (auto-sent by the browser).
+- Do not expose the app publicly without proper tenant membership checks.
 

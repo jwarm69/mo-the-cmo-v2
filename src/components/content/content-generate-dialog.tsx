@@ -21,8 +21,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Plus, Loader2 } from "lucide-react";
-import { EXAMPLE_BRAND_SEED } from "@/lib/seed/bite-club";
-import type { Platform } from "@/lib/store/types";
+import type { Platform } from "@/lib/types";
 
 const PLATFORMS: { value: Platform; label: string }[] = [
   { value: "tiktok", label: "TikTok" },
@@ -32,10 +31,17 @@ const PLATFORMS: { value: Platform; label: string }[] = [
   { value: "blog", label: "Blog" },
 ];
 
+export interface ContentPillar {
+  name: string;
+  ratio: number;
+}
+
 export function ContentGenerateDialog({
   onGenerated,
+  pillars,
 }: {
   onGenerated?: () => void;
+  pillars?: ContentPillar[];
 }) {
   const [open, setOpen] = useState(false);
   const [platform, setPlatform] = useState<Platform>("tiktok");
@@ -113,11 +119,15 @@ export function ContentGenerateDialog({
                 <SelectValue placeholder="Auto-select" />
               </SelectTrigger>
               <SelectContent>
-                {EXAMPLE_BRAND_SEED.contentPillars.map((p) => (
-                  <SelectItem key={p.name} value={p.name}>
-                    {p.name} ({p.ratio}%)
-                  </SelectItem>
-                ))}
+                {pillars && pillars.length > 0 ? (
+                  pillars.map((p) => (
+                    <SelectItem key={p.name} value={p.name}>
+                      {p.name} ({p.ratio}%)
+                    </SelectItem>
+                  ))
+                ) : (
+                  <SelectItem value="General">General</SelectItem>
+                )}
               </SelectContent>
             </Select>
           </div>

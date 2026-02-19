@@ -20,9 +20,9 @@ import {
   Zap,
 } from "lucide-react";
 import { ContentCard } from "@/components/content/content-card";
-import { ContentGenerateDialog } from "@/components/content/content-generate-dialog";
+import { ContentGenerateDialog, type ContentPillar } from "@/components/content/content-generate-dialog";
 import { ContentCalendar } from "@/components/content/content-calendar";
-import type { ContentItem, Platform, ContentStatus } from "@/lib/store/types";
+import type { ContentItem, Platform, ContentStatus } from "@/lib/types";
 
 export default function ContentPage() {
   const [items, setItems] = useState<ContentItem[]>([]);
@@ -30,6 +30,7 @@ export default function ContentPage() {
   const [bulkLoading, setBulkLoading] = useState(false);
   const [platformFilter, setPlatformFilter] = useState<string>("all");
   const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [pillars, setPillars] = useState<ContentPillar[]>([]);
 
   const fetchItems = useCallback(async () => {
     setLoading(true);
@@ -55,6 +56,17 @@ export default function ContentPage() {
   useEffect(() => {
     fetchItems();
   }, [fetchItems]);
+
+  useEffect(() => {
+    fetch("/api/brand")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => {
+        if (data?.profile?.contentPillars) {
+          setPillars(data.profile.contentPillars);
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   const handleApprove = async (id: string) => {
     await fetch("/api/content", {
@@ -117,7 +129,7 @@ export default function ContentPage() {
               </>
             )}
           </Button>
-          <ContentGenerateDialog onGenerated={fetchItems} />
+          <ContentGenerateDialog onGenerated={fetchItems} pillars={pillars} />
         </div>
       </div>
 

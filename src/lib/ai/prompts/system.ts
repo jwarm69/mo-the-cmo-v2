@@ -1,4 +1,4 @@
-import type { Platform } from "@/lib/store/types";
+import type { Platform } from "@/lib/types";
 
 export const MO_SYSTEM_PROMPT = `You are Mo, the AI Chief Marketing Officer. You are a strategic, data-driven marketing expert who combines creative brilliance with analytical rigor.
 

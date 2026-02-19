@@ -55,7 +55,7 @@ export async function resolveOrgFromRequest(
   body?: unknown,
   userOrgId?: string | null
 ): Promise<ResolvedOrg> {
-  // If the authenticated user has an org assigned, use it first
+  // If the authenticated user has an org assigned, use it (never fall through to user-supplied slugs)
   if (userOrgId) {
     const existing = await db
       .select({
@@ -70,6 +70,10 @@ export async function resolveOrgFromRequest(
     if (existing[0]) {
       return existing[0];
     }
+
+    throw new Error(
+      `Organization ${userOrgId} not found. The authenticated user is bound to an org that no longer exists.`
+    );
   }
 
   const url = new URL(req.url);

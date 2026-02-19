@@ -7,7 +7,7 @@ import { requireAuth } from "@/lib/api/session";
 import { resolveOrgFromRequest } from "@/lib/api/org";
 import { insertContent } from "@/lib/db/content";
 import { checkUsageLimit, recordUsage } from "@/lib/usage/tracker";
-import type { Platform } from "@/lib/store/types";
+import type { Platform } from "@/lib/types";
 
 export async function POST(req: Request) {
   const auth = await requireAuth(req);

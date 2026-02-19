@@ -3,7 +3,7 @@ import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 import { eq } from "drizzle-orm";
 import { db } from "@/lib/db/client";
-import { userProfiles } from "@/lib/db/schema";
+import { userProfiles, organizations } from "@/lib/db/schema";
 
 export interface SessionUser {
   id: string;
@@ -116,11 +116,28 @@ export async function requireAuth(
 
   const providedKey = extractApiKey(req);
   if (providedKey && providedKey === expectedApiKey) {
+    // Bind API key to a specific org to prevent slug injection
+    const apiKeyOrgSlug =
+      process.env.APP_API_KEY_ORG_SLUG ||
+      process.env.DEFAULT_ORG_SLUG ||
+      "default-org";
+
+    let orgId: string | null = null;
+    const [org] = await db
+      .select({ id: organizations.id })
+      .from(organizations)
+      .where(eq(organizations.slug, apiKeyOrgSlug))
+      .limit(1);
+
+    if (org) {
+      orgId = org.id;
+    }
+
     return {
       user: {
         id: "system",
         email: "api-key@system",
-        orgId: null,
+        orgId,
         usageLimitCents: 0, // 0 = no limit for API key users
         isApiKeyUser: true,
       },

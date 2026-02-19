@@ -6,7 +6,7 @@
 import { and, desc, eq } from "drizzle-orm";
 import { db } from "./client";
 import { contentItems as contentItemsTable } from "./schema";
-import type { ContentItem as UIContentItem, ContentStatus, Platform } from "@/lib/store/types";
+import type { ContentItem as UIContentItem, ContentStatus, Platform } from "@/lib/types";
 
 type ContentRow = typeof contentItemsTable.$inferSelect;
 

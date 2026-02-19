@@ -10,7 +10,7 @@ import {
   describeDiff,
 } from "@/lib/db/content";
 import { storeLearning } from "@/lib/memory/long-term";
-import type { ContentStatus, Platform } from "@/lib/store/types";
+import type { ContentStatus, Platform } from "@/lib/types";
 
 export async function GET(req: Request) {
   const auth = await requireAuth(req);

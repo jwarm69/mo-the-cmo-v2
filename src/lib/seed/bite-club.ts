@@ -1,4 +1,5 @@
-// Example brand seed data — use as reference for the setup wizard
+// Example brand seed data — NOT imported by any production code.
+// Use as reference for the setup wizard or to seed a new org via the API.
 export const EXAMPLE_BRAND_SEED = {
   name: "Bite Club",
   voice:
