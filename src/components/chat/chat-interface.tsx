@@ -4,7 +4,7 @@ import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport } from "ai";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { ScrollArea } from "@/components/ui/scroll-area";
+
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Bot, Send, User, Loader2 } from "lucide-react";
@@ -58,7 +58,7 @@ export function ChatInterface() {
   return (
     <div className="flex h-full flex-col">
       {/* Messages Area */}
-      <ScrollArea className="flex-1 pr-4" ref={scrollRef}>
+      <div className="flex-1 overflow-y-auto pr-4 min-h-0" ref={scrollRef}>
         <div className="space-y-6 pb-4">
           {messages.length === 0 && (
             <div className="flex flex-col items-center justify-center py-12 text-center">
@@ -166,7 +166,7 @@ export function ChatInterface() {
             </div>
           )}
         </div>
-      </ScrollArea>
+      </div>
 
       {/* Input Area */}
       <div className="border-t pt-4">
