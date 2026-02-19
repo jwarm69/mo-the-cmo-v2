@@ -56,6 +56,27 @@ async function main() {
   const client = postgres(connectionString, { prepare: false });
   const db = drizzle(client, { schema });
 
+  // Resolve or create Bite Club org
+  const orgSlug = process.env.DEFAULT_ORG_SLUG || "bite-club";
+  const orgName = process.env.DEFAULT_ORG_NAME || "Bite Club";
+
+  let [orgRow] = await db
+    .select({ id: schema.organizations.id })
+    .from(schema.organizations)
+    .where(eq(schema.organizations.slug, orgSlug))
+    .limit(1);
+
+  if (!orgRow) {
+    console.log(`Organization "${orgSlug}" not found, creating...`);
+    [orgRow] = await db
+      .insert(schema.organizations)
+      .values({ slug: orgSlug, name: orgName })
+      .returning({ id: schema.organizations.id });
+  }
+
+  const orgId = orgRow.id;
+  console.log(`Resolved org "${orgSlug}" → ${orgId}`);
+
   // Step 1: Backfill knowledge_chunks without embeddings
   console.log("Backfilling knowledge_chunks embeddings...");
 
@@ -114,7 +135,7 @@ async function main() {
     const [doc] = await db
       .insert(schema.knowledgeDocuments)
       .values({
-        orgId: "00000000-0000-0000-0000-000000000000", // placeholder; update per-org as needed
+        orgId,
         title: file.replace(".md", ""),
         content,
         sourceType: "file",
@@ -128,7 +149,7 @@ async function main() {
       await db.insert(schema.knowledgeChunks).values(
         chunks.map((chunk, index) => ({
           documentId: doc.id,
-          orgId: "00000000-0000-0000-0000-000000000000",
+          orgId,
           content: chunk,
           chunkIndex: index,
           embedding: embeddings[index] || null,
