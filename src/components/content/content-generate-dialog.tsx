@@ -27,6 +27,8 @@ const PLATFORMS: { value: Platform; label: string }[] = [
   { value: "tiktok", label: "TikTok" },
   { value: "instagram", label: "Instagram" },
   { value: "twitter", label: "Twitter/X" },
+  { value: "facebook", label: "Facebook" },
+  { value: "linkedin", label: "LinkedIn" },
   { value: "email", label: "Email" },
   { value: "blog", label: "Blog" },
 ];

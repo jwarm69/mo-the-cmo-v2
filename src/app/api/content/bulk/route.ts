@@ -9,7 +9,7 @@ import {
 import { assembleContext } from "@/lib/rag/context";
 import { requireAuth } from "@/lib/api/session";
 import { resolveOrgFromRequest } from "@/lib/api/org";
-import { insertContent } from "@/lib/db/content";
+import { insertContent, getContentForDateRange } from "@/lib/db/content";
 import { checkUsageLimit, recordUsage } from "@/lib/usage/tracker";
 import { db } from "@/lib/db/client";
 import { brandProfiles, campaigns, ideas } from "@/lib/db/schema";
@@ -48,7 +48,11 @@ export async function POST(req: Request) {
   }
 
   const body = await req.json().catch(() => ({}));
-  const { campaignId } = body as { campaignId?: string };
+  const { campaignId, preview, targetWeek } = body as {
+    campaignId?: string;
+    preview?: boolean;
+    targetWeek?: "current" | "next";
+  };
 
   const org = await resolveOrgFromRequest(req, body, user.orgId);
 
@@ -72,6 +76,58 @@ export async function POST(req: Request) {
 
   // 2. Posting cadence (from DB or defaults)
   const cadence = await getOrgCadence(org.id);
+
+  // ── Smart week targeting ──────────────────────────────────────────
+  // If >50% of the current week has passed (Thu+), default to next week
+  const now = new Date();
+  const currentDayOfWeek = now.getDay(); // 0=Sun, 6=Sat
+  const daysIntoCurrent = currentDayOfWeek === 0 ? 6 : currentDayOfWeek - 1; // Mon=0
+  const useNextWeek =
+    targetWeek === "next" || (!targetWeek && daysIntoCurrent >= 4); // Thu=4
+
+  const monday = new Date(now);
+  monday.setDate(now.getDate() - daysIntoCurrent + (useNextWeek ? 7 : 0));
+  monday.setHours(0, 0, 0, 0);
+
+  const sunday = new Date(monday);
+  sunday.setDate(monday.getDate() + 6);
+  sunday.setHours(23, 59, 59, 999);
+
+  const weekLabel = `${monday.toISOString().split("T")[0]} to ${sunday.toISOString().split("T")[0]}`;
+
+  // ── Collision detection ──────────────────────────────────────────
+  const existingContent = await getContentForDateRange(org.id, monday, sunday);
+
+  // Build a set of occupied slots: "YYYY-MM-DD|platform|HH:MM"
+  const occupiedSlots = new Set<string>();
+  for (const item of existingContent) {
+    if (item.scheduledDate) {
+      const key = `${item.scheduledDate}|${item.platform}|${item.scheduledTime || ""}`;
+      occupiedSlots.add(key);
+    }
+  }
+
+  // Filter cadence to only empty slots
+  const availableSlots = cadence.filter((slot) => {
+    const dayOfWeek = slot.dayOfWeek;
+    const slotDate = new Date(monday);
+    const daysFromMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+    slotDate.setDate(monday.getDate() + daysFromMonday);
+    const dateStr = slotDate.toISOString().split("T")[0];
+    const key = `${dateStr}|${slot.platform}|${slot.timeSlot}`;
+    return !occupiedSlots.has(key);
+  });
+
+  if (availableSlots.length === 0) {
+    return NextResponse.json({
+      success: true,
+      count: 0,
+      items: [],
+      week: weekLabel,
+      skipped: cadence.length,
+      message: `All ${cadence.length} slots for the week of ${weekLabel} already have content. Nothing to generate.`,
+    });
+  }
 
   // 3. Full context assembly (brand, RAG, learnings, preferences, current state)
   const context = await assembleContext(org.id, "weekly content plan");
@@ -130,8 +186,10 @@ export async function POST(req: Request) {
 
   // ── Phase 1: AI Plans the Week ─────────────────────────────────────
 
+  const skippedCount = cadence.length - availableSlots.length;
+
   const planningPrompt = buildWeeklyPlanningPrompt({
-    cadence: formatCadenceForPrompt(cadence),
+    cadence: formatCadenceForPrompt(availableSlots),
     brandContext: context.brandContext,
     ragContext: context.ragContext,
     learnings: context.learnings,
@@ -139,7 +197,7 @@ export async function POST(req: Request) {
     currentState: context.currentState,
     activeCampaigns: campaignContext,
     capturedIdeas: ideasContext,
-    slotCount: cadence.length,
+    slotCount: availableSlots.length,
   });
 
   const { text: planText, usage: planUsage } = await generateText({
@@ -167,8 +225,8 @@ export async function POST(req: Request) {
       .trim();
     plan = JSON.parse(cleaned);
   } catch {
-    // Fallback: generate a basic plan from cadence slots
-    plan = cadence.map((slot, i) => ({
+    // Fallback: generate a basic plan from available slots only
+    plan = availableSlots.map((slot, i) => ({
       slotIndex: i,
       platform: slot.platform,
       dayOfWeek: slot.dayOfWeek,
@@ -181,16 +239,37 @@ export async function POST(req: Request) {
     }));
   }
 
-  // ── Phase 2: Generate Each Piece with Full Context ─────────────────
+  // ── Preview mode: return the plan without generating content ───────
 
-  // Get the Monday of the current week
-  const now = new Date();
-  const monday = new Date(now);
-  monday.setDate(now.getDate() - ((now.getDay() + 6) % 7));
+  if (preview) {
+    return NextResponse.json({
+      success: true,
+      preview: true,
+      week: weekLabel,
+      plan: plan.map((p, i) => {
+        const slot = availableSlots[i] || availableSlots[0];
+        const dayOfWeek = p.dayOfWeek ?? slot.dayOfWeek;
+        const slotDate = new Date(monday);
+        const daysFromMon = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+        slotDate.setDate(monday.getDate() + daysFromMon);
+        return {
+          ...p,
+          date: slotDate.toISOString().split("T")[0],
+          dayName: DAY_NAMES[dayOfWeek],
+        };
+      }),
+      totalSlots: cadence.length,
+      availableSlots: availableSlots.length,
+      skippedSlots: skippedCount,
+      existingContent: existingContent.length,
+    });
+  }
+
+  // ── Phase 2: Generate Each Piece with Full Context ─────────────────
 
   const results = await Promise.all(
     plan.map(async (planned, i) => {
-      const slot = cadence[i] || cadence[0];
+      const slot = availableSlots[i] || availableSlots[0];
       const platform = (planned.platform || slot.platform) as Platform;
 
       const prompt = buildContentGenerationPrompt(
@@ -309,5 +388,7 @@ export async function POST(req: Request) {
     success: true,
     count: results.length,
     items: results,
+    week: weekLabel,
+    skipped: skippedCount,
   });
 }

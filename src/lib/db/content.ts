@@ -3,7 +3,7 @@
  * Translates between DB shape and UI ContentItem shape.
  */
 
-import { and, desc, eq } from "drizzle-orm";
+import { and, desc, eq, gte, lte } from "drizzle-orm";
 import { db } from "./client";
 import { contentItems as contentItemsTable } from "./schema";
 import type { ContentItem as UIContentItem, ContentStatus, Platform } from "@/lib/types";
@@ -86,6 +86,30 @@ export async function listContent(
     .from(contentItemsTable)
     .where(and(...conditions))
     .orderBy(desc(contentItemsTable.createdAt));
+
+  return rows.map(dbRowToContentItem);
+}
+
+/**
+ * Get all content items scheduled within a date range for an org.
+ * Used for collision detection when generating weekly content.
+ */
+export async function getContentForDateRange(
+  orgId: string,
+  from: Date,
+  to: Date
+): Promise<UIContentItem[]> {
+  const rows = await db
+    .select()
+    .from(contentItemsTable)
+    .where(
+      and(
+        eq(contentItemsTable.orgId, orgId),
+        gte(contentItemsTable.scheduledAt, from),
+        lte(contentItemsTable.scheduledAt, to)
+      )
+    )
+    .orderBy(contentItemsTable.scheduledAt);
 
   return rows.map(dbRowToContentItem);
 }

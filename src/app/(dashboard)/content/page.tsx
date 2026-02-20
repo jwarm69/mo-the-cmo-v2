@@ -25,6 +25,7 @@ import {
 import { ContentCard } from "@/components/content/content-card";
 import { ContentGenerateDialog, type ContentPillar } from "@/components/content/content-generate-dialog";
 import { ContentCalendar } from "@/components/content/content-calendar";
+import { WeekPlanPreview } from "@/components/content/week-plan-preview";
 import type { ContentItem, Platform, ContentStatus } from "@/lib/types";
 
 interface Idea {
@@ -41,11 +42,34 @@ export default function ContentPage() {
   const [items, setItems] = useState<ContentItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [bulkLoading, setBulkLoading] = useState(false);
+  const [previewLoading, setPreviewLoading] = useState(false);
   const [platformFilter, setPlatformFilter] = useState<string>("all");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [pillars, setPillars] = useState<ContentPillar[]>([]);
   const [ideas, setIdeas] = useState<Idea[]>([]);
   const [ideasLoading, setIdeasLoading] = useState(false);
+
+  // Week plan preview state
+  const [previewOpen, setPreviewOpen] = useState(false);
+  const [previewPlan, setPreviewPlan] = useState<{
+    plan: Array<{
+      slotIndex: number;
+      platform: string;
+      dayOfWeek: number;
+      dayName: string;
+      date: string;
+      timeSlot: string;
+      topic: string;
+      pillar: string;
+      brief: string;
+      campaignTie: string | null;
+      ideaSource: string | null;
+    }>;
+    week: string;
+    totalSlots: number;
+    availableSlots: number;
+    skippedSlots: number;
+  } | null>(null);
 
   const fetchItems = useCallback(async () => {
     setLoading(true);
@@ -117,11 +141,53 @@ export default function ContentPage() {
     fetchItems();
   };
 
+  const handleBulkPreview = async () => {
+    setPreviewLoading(true);
+    try {
+      const res = await fetch("/api/content/bulk", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ preview: true }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.preview) {
+          setPreviewPlan({
+            plan: data.plan,
+            week: data.week,
+            totalSlots: data.totalSlots,
+            availableSlots: data.availableSlots,
+            skippedSlots: data.skippedSlots,
+          });
+          setPreviewOpen(true);
+        } else if (data.count === 0) {
+          // All slots full
+          setPreviewPlan({
+            plan: [],
+            week: data.week,
+            totalSlots: data.skipped,
+            availableSlots: 0,
+            skippedSlots: data.skipped,
+          });
+          setPreviewOpen(true);
+        }
+      }
+    } finally {
+      setPreviewLoading(false);
+    }
+  };
+
   const handleBulkGenerate = async () => {
     setBulkLoading(true);
     try {
-      const res = await fetch("/api/content/bulk", { method: "POST" });
+      const res = await fetch("/api/content/bulk", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({}),
+      });
       if (res.ok) {
+        setPreviewOpen(false);
+        setPreviewPlan(null);
         fetchItems();
       }
     } finally {
@@ -166,10 +232,15 @@ export default function ContentPage() {
             variant="outline"
             size="sm"
             className="md:size-default"
-            onClick={handleBulkGenerate}
-            disabled={bulkLoading}
+            onClick={handleBulkPreview}
+            disabled={previewLoading || bulkLoading}
           >
-            {bulkLoading ? (
+            {previewLoading ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Planning...
+              </>
+            ) : bulkLoading ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 Generating...
@@ -235,6 +306,8 @@ export default function ContentPage() {
                 <SelectItem value="tiktok">TikTok</SelectItem>
                 <SelectItem value="instagram">Instagram</SelectItem>
                 <SelectItem value="twitter">Twitter/X</SelectItem>
+                <SelectItem value="facebook">Facebook</SelectItem>
+                <SelectItem value="linkedin">LinkedIn</SelectItem>
                 <SelectItem value="email">Email</SelectItem>
                 <SelectItem value="blog">Blog</SelectItem>
               </SelectContent>
@@ -295,13 +368,13 @@ export default function ContentPage() {
                 </p>
                 <Button
                   variant="outline"
-                  onClick={handleBulkGenerate}
-                  disabled={bulkLoading}
+                  onClick={handleBulkPreview}
+                  disabled={previewLoading || bulkLoading}
                 >
-                  {bulkLoading ? (
+                  {previewLoading ? (
                     <>
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Generating...
+                      Planning...
                     </>
                   ) : (
                     <>
@@ -408,6 +481,20 @@ export default function ContentPage() {
           )}
         </TabsContent>
       </Tabs>
+
+      {previewPlan && (
+        <WeekPlanPreview
+          open={previewOpen}
+          onOpenChange={setPreviewOpen}
+          plan={previewPlan.plan}
+          week={previewPlan.week}
+          totalSlots={previewPlan.totalSlots}
+          availableSlots={previewPlan.availableSlots}
+          skippedSlots={previewPlan.skippedSlots}
+          generating={bulkLoading}
+          onConfirm={handleBulkGenerate}
+        />
+      )}
     </div>
   );
 }

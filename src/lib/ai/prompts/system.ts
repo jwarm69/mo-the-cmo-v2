@@ -60,6 +60,24 @@ export const PLATFORM_TEMPLATES: Record<Platform, string> = {
 - Use line breaks for readability. No walls of text.
 - 1-3 hashtags max. Threads perform better than single tweets for educational content.`,
 
+  facebook: `Format: Facebook Post
+- HOOK: First 1-2 sentences must hook — Facebook truncates after ~400 characters in feed.
+- BODY: Conversational tone. Short paragraphs. Use line breaks and emojis sparingly.
+- CTA: Ask a question to drive comments, or direct to a link.
+- MEDIA: Native video autoplay performs best. Carousels for product showcases.
+- HASHTAGS: 1-3 max. Facebook hashtags are less critical than Instagram.
+- Best formats: Video (under 3 min), carousel, link posts with compelling preview text.
+- Optimize for shares — content that sparks conversation gets algorithmic boost.`,
+
+  linkedin: `Format: LinkedIn Post
+- HOOK: First line is critical — it shows before "...see more". Lead with a bold statement, surprising stat, or personal story opener.
+- BODY: Professional but human tone. Use line breaks between every 1-2 sentences. Numbered lists perform well.
+- CTA: Ask for engagement ("Agree? Comment below."), or share a resource link.
+- HASHTAGS: 3-5 relevant professional hashtags at the end.
+- FORMAT OPTIONS: Text-only posts often outperform media on LinkedIn. Carousels (PDF uploads) work for educational content.
+- STYLE: First-person, thought-leadership angle. Share lessons learned, industry insights, or behind-the-scenes.
+- Avoid: Sales-heavy language, excessive self-promotion, or corporate jargon.`,
+
   email: `Format: Email Marketing
 - SUBJECT LINE: Under 50 characters. Create curiosity or urgency. A/B test options.
 - PREVIEW TEXT: Complements subject line, 40-90 characters.

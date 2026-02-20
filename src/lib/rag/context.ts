@@ -2,7 +2,7 @@
  * Context assembly for prompts.
  */
 
-import { and, desc, eq, gte, sql, count } from "drizzle-orm";
+import { and, desc, eq, gte, lte } from "drizzle-orm";
 import { db } from "@/lib/db/client";
 import {
   agentPreferences,
@@ -14,6 +14,7 @@ import {
 import { getRelevantLearnings } from "@/lib/memory/long-term";
 import { searchKnowledge } from "./search";
 import { normalizeBrandProfile } from "@/lib/brand/defaults";
+import { getOrgCadence, formatCadenceForPrompt } from "@/lib/cadence/defaults";
 
 function formatBrandContext(
   profile: ReturnType<typeof normalizeBrandProfile>
@@ -97,7 +98,19 @@ export async function assembleContext(
 
   // Fetch current state for situational awareness
   const startOfMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
-  const [recentContent, activeCampaigns, pillarCounts] = await Promise.all([
+
+  // Calculate this week's Monday and Sunday for schedule awareness
+  const today = new Date();
+  const dayOfWeek = today.getDay();
+  const daysIntoCurrent = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+  const thisMonday = new Date(today);
+  thisMonday.setDate(today.getDate() - daysIntoCurrent);
+  thisMonday.setHours(0, 0, 0, 0);
+  const thisSunday = new Date(thisMonday);
+  thisSunday.setDate(thisMonday.getDate() + 6);
+  thisSunday.setHours(23, 59, 59, 999);
+
+  const [recentContent, activeCampaigns, pillarCounts, thisWeekContent, cadence] = await Promise.all([
     // Last 10 content items
     db
       .select({
@@ -133,6 +146,26 @@ export async function assembleContext(
           gte(contentItems.createdAt, startOfMonth)
         )
       ),
+    // This week's scheduled content
+    db
+      .select({
+        platform: contentItems.platform,
+        status: contentItems.status,
+        title: contentItems.title,
+        metadata: contentItems.metadata,
+        scheduledAt: contentItems.scheduledAt,
+      })
+      .from(contentItems)
+      .where(
+        and(
+          eq(contentItems.orgId, orgId),
+          gte(contentItems.scheduledAt, thisMonday),
+          lte(contentItems.scheduledAt, thisSunday)
+        )
+      )
+      .orderBy(contentItems.scheduledAt),
+    // Posting cadence
+    getOrgCadence(orgId),
   ]);
 
   // Build current state string
@@ -193,6 +226,35 @@ export async function assembleContext(
         );
       }
     }
+  }
+
+  // Posting cadence
+  if (cadence.length > 0) {
+    stateLines.push("\nPosting Cadence (weekly schedule):");
+    stateLines.push(formatCadenceForPrompt(cadence));
+  }
+
+  // This week's scheduled content
+  const DAY_NAMES = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+  if (thisWeekContent.length > 0) {
+    stateLines.push(
+      `\nThis Week's Schedule (${thisMonday.toISOString().split("T")[0]} to ${thisSunday.toISOString().split("T")[0]}):`
+    );
+    for (const c of thisWeekContent) {
+      const meta = (c.metadata ?? {}) as Record<string, unknown>;
+      const pillar = (meta.pillar as string) || "General";
+      const topic = (meta.topic as string) || "";
+      if (c.scheduledAt) {
+        const d = new Date(c.scheduledAt);
+        const dayName = DAY_NAMES[d.getDay()];
+        const time = `${String(d.getUTCHours()).padStart(2, "0")}:${String(d.getUTCMinutes()).padStart(2, "0")}`;
+        stateLines.push(
+          `- ${dayName} ${time} [${c.platform}] "${c.title || topic}" | pillar=${pillar} | status=${c.status}`
+        );
+      }
+    }
+  } else {
+    stateLines.push("\nNo content scheduled for this week yet.");
   }
 
   const currentState = stateLines.join("\n");

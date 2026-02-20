@@ -1,4 +1,4 @@
-export type Platform = "tiktok" | "instagram" | "twitter" | "email" | "blog";
+export type Platform = "tiktok" | "instagram" | "twitter" | "facebook" | "linkedin" | "email" | "blog";
 
 export type ContentStatus =
   | "draft"

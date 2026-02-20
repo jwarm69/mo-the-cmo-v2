@@ -73,7 +73,7 @@ export async function GET(req: Request) {
 
   // Check for platform gaps
   const activePlatforms = new Set(platformActivity.map((p) => p.platform));
-  const allPlatforms = ["tiktok", "instagram", "twitter"] as const;
+  const allPlatforms = ["tiktok", "instagram", "twitter", "facebook", "linkedin"] as const;
   for (const platform of allPlatforms) {
     if (!activePlatforms.has(platform)) {
       suggestions.push({
