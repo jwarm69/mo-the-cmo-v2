@@ -214,14 +214,14 @@ export function SetupWizard() {
   }
 
   return (
-    <div className="mx-auto max-w-2xl space-y-8">
+    <div className="mx-auto max-w-2xl space-y-6 md:space-y-8">
       {/* Header */}
       <div>
-        <h2 className="flex items-center gap-2 text-2xl font-bold tracking-tight">
-          <Sparkles className="h-6 w-6" />
+        <h2 className="flex items-center gap-2 text-xl md:text-2xl font-bold tracking-tight">
+          <Sparkles className="h-5 w-5 md:h-6 md:w-6" />
           Set Up Your Brand
         </h2>
-        <p className="text-muted-foreground">
+        <p className="text-sm md:text-base text-muted-foreground">
           Walk Mo through your brand in a few quick steps. You can always edit
           this later.
         </p>

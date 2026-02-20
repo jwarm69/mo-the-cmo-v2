@@ -159,4 +159,12 @@
   body {
     @apply bg-background text-foreground;
   }
+  html {
+    -webkit-tap-highlight-color: transparent;
+  }
+  @media (max-width: 768px) {
+    html {
+      scroll-behavior: smooth;
+    }
+  }
 }

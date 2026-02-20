@@ -107,13 +107,13 @@ export default function DashboardPage() {
   }, []);
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6 md:space-y-8">
       {/* Welcome */}
       <div>
-        <h2 className="text-3xl font-bold tracking-tight">
+        <h2 className="text-2xl md:text-3xl font-bold tracking-tight">
           Welcome back to <span className="text-primary">{CLIENT_DEFAULT_ORG_NAME}</span>
         </h2>
-        <p className="text-muted-foreground">
+        <p className="text-sm md:text-base text-muted-foreground">
           Here&apos;s what&apos;s happening with {CLIENT_DEFAULT_ORG_NAME} marketing today.
         </p>
       </div>
@@ -121,7 +121,7 @@ export default function DashboardPage() {
       {/* Setup CTA */}
       {needsSetup && !isLoading && (
         <Card className="border-primary/20 bg-gradient-to-r from-primary/5 to-primary/10">
-          <CardHeader className="flex flex-row items-center gap-4">
+          <CardHeader className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
             <div className="rounded-lg bg-primary/10 p-3">
               <Sparkles className="h-6 w-6 text-primary" />
             </div>
@@ -132,14 +132,14 @@ export default function DashboardPage() {
               </CardDescription>
             </div>
             <Link href="/setup">
-              <Button>Start Setup</Button>
+              <Button className="w-full sm:w-auto">Start Setup</Button>
             </Link>
           </CardHeader>
         </Card>
       )}
 
       {/* Stats Grid */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 md:gap-4 lg:grid-cols-4">
         {stats.map((stat) => (
           <Card key={stat.title}>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">

@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Toaster } from "@/components/ui/sonner";
 import { ThemeProvider } from "@/components/theme-provider";
 import "./globals.css";
@@ -11,6 +11,12 @@ export const metadata: Metadata = {
     icon: "/favicon.ico",
     apple: "/apple-touch-icon.png",
   },
+};
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 1,
 };
 
 export default function RootLayout({

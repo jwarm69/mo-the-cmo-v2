@@ -60,10 +60,10 @@ export default function CampaignsPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h2 className="text-2xl font-bold tracking-tight">Campaigns</h2>
-          <p className="text-muted-foreground">
+          <h2 className="text-xl md:text-2xl font-bold tracking-tight">Campaigns</h2>
+          <p className="text-sm md:text-base text-muted-foreground">
             Plan and manage multi-channel marketing campaigns.
           </p>
         </div>

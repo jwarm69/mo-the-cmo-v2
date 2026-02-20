@@ -120,10 +120,10 @@ export default function BrandPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h2 className="text-2xl font-bold tracking-tight">Brand Profile</h2>
-          <p className="text-muted-foreground">
+          <h2 className="text-xl md:text-2xl font-bold tracking-tight">Brand Profile</h2>
+          <p className="text-sm md:text-base text-muted-foreground">
             Define your brand voice, messaging, and content strategy. Mo uses
             this for all content generation.
           </p>
@@ -134,35 +134,41 @@ export default function BrandPage() {
           )}
           {error && <p className="mt-2 text-sm text-destructive">{error}</p>}
         </div>
-        <Button onClick={handleSave} disabled={isSaving || isLoading}>
+        <Button onClick={handleSave} disabled={isSaving || isLoading} className="w-full sm:w-auto shrink-0">
           <Save className="mr-2 h-4 w-4" />
           {isSaving ? "Saving..." : saved ? "Saved!" : "Save Changes"}
         </Button>
       </div>
 
       <Tabs defaultValue="voice">
-        <TabsList>
-          <TabsTrigger value="voice" className="gap-2">
-            <Palette className="h-4 w-4" />
-            Voice & Tone
-          </TabsTrigger>
-          <TabsTrigger value="pillars" className="gap-2">
-            <BookOpen className="h-4 w-4" />
-            Content Pillars
-          </TabsTrigger>
-          <TabsTrigger value="audience" className="gap-2">
-            <Target className="h-4 w-4" />
-            Target Audience
-          </TabsTrigger>
-          <TabsTrigger value="details" className="gap-2">
-            <Hash className="h-4 w-4" />
-            Details
-          </TabsTrigger>
-          <TabsTrigger value="knowledge" className="gap-2">
-            <Database className="h-4 w-4" />
-            Knowledge Base
-          </TabsTrigger>
-        </TabsList>
+        <div className="overflow-x-auto -mx-4 px-4 md:mx-0 md:px-0">
+          <TabsList className="w-max md:w-auto">
+            <TabsTrigger value="voice" className="gap-1 md:gap-2">
+              <Palette className="h-4 w-4" />
+              <span className="hidden sm:inline">Voice & Tone</span>
+              <span className="sm:hidden">Voice</span>
+            </TabsTrigger>
+            <TabsTrigger value="pillars" className="gap-1 md:gap-2">
+              <BookOpen className="h-4 w-4" />
+              <span className="hidden sm:inline">Content Pillars</span>
+              <span className="sm:hidden">Pillars</span>
+            </TabsTrigger>
+            <TabsTrigger value="audience" className="gap-1 md:gap-2">
+              <Target className="h-4 w-4" />
+              <span className="hidden sm:inline">Target Audience</span>
+              <span className="sm:hidden">Audience</span>
+            </TabsTrigger>
+            <TabsTrigger value="details" className="gap-1 md:gap-2">
+              <Hash className="h-4 w-4" />
+              Details
+            </TabsTrigger>
+            <TabsTrigger value="knowledge" className="gap-1 md:gap-2">
+              <Database className="h-4 w-4" />
+              <span className="hidden sm:inline">Knowledge Base</span>
+              <span className="sm:hidden">Knowledge</span>
+            </TabsTrigger>
+          </TabsList>
+        </div>
 
         {/* Voice & Tone */}
         <TabsContent value="voice" className="space-y-4">
