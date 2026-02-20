@@ -81,6 +81,7 @@ export async function POST(req: Request) {
       ragContext: assembled.ragContext,
       learnings: assembled.learnings,
       preferences: assembled.preferences,
+      currentState: assembled.currentState,
     });
 
     const result = streamText({

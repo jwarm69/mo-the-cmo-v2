@@ -7,6 +7,7 @@ export interface AgentContext {
   ragContext?: string;
   learnings?: string;
   preferences?: string;
+  currentState?: string;
   recentPerformance?: string;
 }
 
@@ -39,7 +40,8 @@ export async function orchestrate(
     context.brandProfile,
     context.ragContext,
     context.learnings,
-    context.preferences
+    context.preferences,
+    context.currentState
   );
 
   return { systemPrompt, taskType, model };

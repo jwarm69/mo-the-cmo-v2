@@ -77,12 +77,22 @@ export const PLATFORM_TEMPLATES: Record<Platform, string> = {
 - Word count: 800-1500 words for standard posts.`,
 };
 
+export interface ContentPromptContext {
+  brandContext?: string;
+  ragContext?: string;
+  learnings?: string;
+  preferences?: string;
+  currentState?: string;
+  weeklyPlanBrief?: string;
+}
+
 export function buildContentGenerationPrompt(
   platform: Platform,
   topic: string,
   pillar?: string,
   brandContext?: string,
-  ragContext?: string
+  ragContext?: string,
+  extraContext?: Omit<ContentPromptContext, "brandContext" | "ragContext">
 ): string {
   let prompt = `You are Mo, an expert marketing content creator. Generate a single piece of content for the following request.
 
@@ -104,6 +114,22 @@ ${topic}`;
     prompt += `\n\n## Knowledge Base Context\n${ragContext}`;
   }
 
+  if (extraContext?.learnings) {
+    prompt += `\n\n## What We've Learned\nApply these validated insights from past performance:\n${extraContext.learnings}`;
+  }
+
+  if (extraContext?.preferences) {
+    prompt += `\n\n## User Preferences\nRespect these explicit preferences:\n${extraContext.preferences}`;
+  }
+
+  if (extraContext?.currentState) {
+    prompt += `\n\n## Current State\nBe aware of what's already scheduled and published — avoid repetition:\n${extraContext.currentState}`;
+  }
+
+  if (extraContext?.weeklyPlanBrief) {
+    prompt += `\n\n## Weekly Plan Context\nThis piece is part of a planned week. Here's how it fits:\n${extraContext.weeklyPlanBrief}`;
+  }
+
   prompt += `\n\n## Output Format
 Respond in JSON with this exact structure (no markdown code fences):
 {
@@ -121,12 +147,17 @@ export function buildContextualPrompt(
   brandContext?: string,
   ragContext?: string,
   learnings?: string,
-  preferences?: string
+  preferences?: string,
+  currentState?: string
 ): string {
   let prompt = MO_SYSTEM_PROMPT;
 
   if (brandContext) {
     prompt += `\n\n## Brand Context\n${brandContext}`;
+  }
+
+  if (currentState) {
+    prompt += `\n\n## Current State\nHere is the current state of the user's content pipeline and campaigns. Reference this data when answering questions about what's scheduled, what's been created, or what needs attention:\n${currentState}`;
   }
 
   if (ragContext) {
@@ -142,4 +173,87 @@ export function buildContextualPrompt(
   }
 
   return prompt;
+}
+
+/**
+ * Build a planning prompt for the AI to create a cohesive weekly content plan.
+ * This is the "brain" step — the AI sees everything the app knows and designs
+ * a week of content that's strategic, varied, and contextually informed.
+ */
+export function buildWeeklyPlanningPrompt(opts: {
+  cadence: string;
+  brandContext: string;
+  ragContext: string;
+  learnings: string;
+  preferences: string;
+  currentState: string;
+  activeCampaigns: string;
+  capturedIdeas: string;
+  slotCount: number;
+}): string {
+  return `You are Mo, the AI Chief Marketing Officer. Your job is to plan a cohesive week of content.
+
+## Your Posting Cadence
+The brand posts on this schedule:
+${opts.cadence}
+
+You are planning exactly ${opts.slotCount} pieces of content, one for each slot above.
+
+## Brand Context
+${opts.brandContext}
+
+## Knowledge Base
+Use this knowledge to inform content substance and accuracy:
+${opts.ragContext || "No knowledge base documents yet."}
+
+## What We've Learned
+Apply these validated insights from past performance and user corrections:
+${opts.learnings || "No learnings recorded yet."}
+
+## User Preferences
+Respect these explicit preferences when creating content:
+${opts.preferences || "No explicit preferences set."}
+
+## Current State
+Here's what's already scheduled, published, and how content pillars are balanced:
+${opts.currentState}
+
+## Active Campaigns
+Weave campaign messaging into the weekly content where it makes sense:
+${opts.activeCampaigns || "No active campaigns."}
+
+## Captured Ideas
+The user has captured these ideas — use them as topics when they fit:
+${opts.capturedIdeas || "No captured ideas."}
+
+## Your Task
+Create a JSON array with exactly ${opts.slotCount} objects, one per scheduled slot, in the same order as the cadence above. For each slot, decide:
+1. **topic** — What this post is about. Draw from campaigns, ideas, brand pillars, pain points, and goals. Avoid repeating topics from recent content.
+2. **pillar** — Which content pillar this serves. Respect the target pillar ratios and correct any current imbalance.
+3. **brief** — A 1-2 sentence creative direction for this specific piece. Reference learnings and preferences.
+4. **campaignTie** — If this post ties to an active campaign, name it. Otherwise null.
+5. **ideaSource** — If this post uses a captured idea, include the idea text. Otherwise null.
+
+Think strategically:
+- Vary topics across the week — no two adjacent posts should feel similar
+- Balance content pillars according to their target ratios
+- Front-load campaign content if deadlines are approaching
+- Use captured ideas when they naturally fit a slot
+- Apply learnings about what works (hooks, formats, tones)
+- Consider platform-specific strengths (TikTok for hooks, Twitter for punchy takes, Instagram for visual storytelling)
+
+Respond with a JSON array (no markdown code fences):
+[
+  {
+    "slotIndex": 0,
+    "platform": "tiktok",
+    "dayOfWeek": 1,
+    "timeSlot": "12:00",
+    "topic": "...",
+    "pillar": "...",
+    "brief": "...",
+    "campaignTie": "..." or null,
+    "ideaSource": "..." or null
+  }
+]`;
 }

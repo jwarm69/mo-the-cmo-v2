@@ -173,6 +173,7 @@ export const contentItems = pgTable(
       .references(() => organizations.id)
       .notNull(),
     campaignId: uuid("campaign_id").references(() => campaigns.id),
+    sourceContentId: uuid("source_content_id"),
     platform: platformEnum("platform").notNull(),
     status: contentStatusEnum("status").default("draft").notNull(),
     title: text("title"),
@@ -382,6 +383,35 @@ export const approvalRequests = pgTable("approval_requests", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
+// ─── Ideas ──────────────────────────────────────────────────────────
+
+export const ideaStatusEnum = pgEnum("idea_status", [
+  "captured",
+  "in_progress",
+  "used",
+  "dismissed",
+]);
+
+export const ideas = pgTable(
+  "ideas",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    orgId: uuid("org_id")
+      .references(() => organizations.id)
+      .notNull(),
+    text: text("text").notNull(),
+    platform: platformEnum("platform"),
+    pillar: text("pillar"),
+    source: text("source").default("manual").notNull(), // "manual" | "mo_suggestion"
+    status: ideaStatusEnum("status").default("captured").notNull(),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  },
+  (table) => [
+    index("ideas_org_status_idx").on(table.orgId, table.status),
+  ]
+);
+
 // Type exports
 export type Organization = typeof organizations.$inferSelect;
 export type UserProfile = typeof userProfiles.$inferSelect;
@@ -398,3 +428,4 @@ export type AgentPreference = typeof agentPreferences.$inferSelect;
 export type KnowledgeDocument = typeof knowledgeDocuments.$inferSelect;
 export type KnowledgeChunk = typeof knowledgeChunks.$inferSelect;
 export type ApprovalRequest = typeof approvalRequests.$inferSelect;
+export type Idea = typeof ideas.$inferSelect;

@@ -39,13 +39,17 @@ export interface ContentPillar {
 export function ContentGenerateDialog({
   onGenerated,
   pillars,
+  defaultTopic,
+  defaultPlatform,
 }: {
   onGenerated?: () => void;
   pillars?: ContentPillar[];
+  defaultTopic?: string;
+  defaultPlatform?: Platform;
 }) {
   const [open, setOpen] = useState(false);
-  const [platform, setPlatform] = useState<Platform>("tiktok");
-  const [topic, setTopic] = useState("");
+  const [platform, setPlatform] = useState<Platform>(defaultPlatform || "tiktok");
+  const [topic, setTopic] = useState(defaultTopic || "");
   const [pillar, setPillar] = useState("");
   const [loading, setLoading] = useState(false);
 
