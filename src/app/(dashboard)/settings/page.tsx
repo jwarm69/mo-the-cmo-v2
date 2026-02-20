@@ -1,4 +1,6 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import Link from "next/link";
+import { Button } from "@/components/ui/button";
 import { Settings } from "lucide-react";
 
 export default function SettingsPage() {
@@ -7,9 +9,23 @@ export default function SettingsPage() {
       <div>
         <h2 className="text-2xl font-bold tracking-tight">Settings</h2>
         <p className="text-muted-foreground">
-          Manage integrations, billing, and account preferences.
+          Manage account and integration preferences.
         </p>
       </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Planning</CardTitle>
+        </CardHeader>
+        <CardContent className="flex items-center justify-between gap-3">
+          <p className="text-sm text-muted-foreground">
+            Weekly cadence and plan generation now live in Plan.
+          </p>
+          <Link href="/plan">
+            <Button variant="outline">Open Plan</Button>
+          </Link>
+        </CardContent>
+      </Card>
 
       <Card>
         <CardHeader>

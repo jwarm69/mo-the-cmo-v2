@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
+import Link from "next/link";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -22,12 +23,11 @@ import {
 import { ContentCard } from "@/components/content/content-card";
 import { ContentGenerateDialog, type ContentPillar } from "@/components/content/content-generate-dialog";
 import { ContentCalendar } from "@/components/content/content-calendar";
-import type { ContentItem, Platform, ContentStatus } from "@/lib/types";
+import type { ContentItem, ContentStatus } from "@/lib/types";
 
 export default function ContentPage() {
   const [items, setItems] = useState<ContentItem[]>([]);
   const [loading, setLoading] = useState(true);
-  const [bulkLoading, setBulkLoading] = useState(false);
   const [platformFilter, setPlatformFilter] = useState<string>("all");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [pillars, setPillars] = useState<ContentPillar[]>([]);
@@ -86,18 +86,6 @@ export default function ContentPage() {
     fetchItems();
   };
 
-  const handleBulkGenerate = async () => {
-    setBulkLoading(true);
-    try {
-      const res = await fetch("/api/content/bulk", { method: "POST" });
-      if (res.ok) {
-        fetchItems();
-      }
-    } finally {
-      setBulkLoading(false);
-    }
-  };
-
   const pendingItems = items.filter(
     (i) => i.status === "draft" || i.status === "pending_approval"
   );
@@ -108,27 +96,16 @@ export default function ContentPage() {
         <div>
           <h2 className="text-2xl font-bold tracking-tight">Content</h2>
           <p className="text-muted-foreground">
-            Manage your content library, calendar, and approvals.
+            Review generated content, approve drafts, and manage your queue.
           </p>
         </div>
         <div className="flex gap-2">
-          <Button
-            variant="outline"
-            onClick={handleBulkGenerate}
-            disabled={bulkLoading}
-          >
-            {bulkLoading ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Generating...
-              </>
-            ) : (
-              <>
-                <Zap className="mr-2 h-4 w-4" />
-                Generate Week
-              </>
-            )}
-          </Button>
+          <Link href="/plan">
+            <Button variant="outline">
+              <Zap className="mr-2 h-4 w-4" />
+              Open Plan
+            </Button>
+          </Link>
           <ContentGenerateDialog onGenerated={fetchItems} pillars={pillars} />
         </div>
       </div>
@@ -225,25 +202,14 @@ export default function ContentPage() {
                   Content Calendar
                 </h3>
                 <p className="mb-4 text-sm text-muted-foreground">
-                  Generate a week of content to populate the calendar.
+                  Use the plan flow to generate a full week and fill this calendar.
                 </p>
-                <Button
-                  variant="outline"
-                  onClick={handleBulkGenerate}
-                  disabled={bulkLoading}
-                >
-                  {bulkLoading ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Generating...
-                    </>
-                  ) : (
-                    <>
-                      <Zap className="mr-2 h-4 w-4" />
-                      Generate Week
-                    </>
-                  )}
-                </Button>
+                <Link href="/plan">
+                  <Button variant="outline">
+                    <Zap className="mr-2 h-4 w-4" />
+                    Open Plan
+                  </Button>
+                </Link>
               </CardContent>
             </Card>
           ) : (

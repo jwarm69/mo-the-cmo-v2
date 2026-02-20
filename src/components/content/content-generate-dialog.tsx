@@ -56,7 +56,7 @@ export function ContentGenerateDialog({
       const res = await fetch("/api/content/generate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ platform, topic, pillar: pillar || undefined }),
+        body: JSON.stringify({ platform, topic, pillar: pillar || undefined, useAgentLoop: true }),
       });
       if (res.ok) {
         setOpen(false);

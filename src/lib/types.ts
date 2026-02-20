@@ -37,6 +37,8 @@ export interface ContentItem {
   status: ContentStatus;
   scheduledDate?: string;
   scheduledTime?: string;
+  performanceScore?: number | null;
+  agentLoopMetadata?: Record<string, unknown> | null;
   createdAt: Date;
 }
 

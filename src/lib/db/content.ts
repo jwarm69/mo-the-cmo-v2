@@ -51,6 +51,8 @@ export function dbRowToContentItem(row: ContentRow): UIContentItem {
     status: row.status as ContentStatus,
     scheduledDate,
     scheduledTime,
+    performanceScore: row.performanceScore,
+    agentLoopMetadata: (meta.agentLoop as Record<string, unknown>) ?? null,
     createdAt: row.createdAt,
   };
 }
@@ -115,6 +117,8 @@ export interface InsertContentInput {
   scheduledDate?: string;
   scheduledTime?: string;
   campaignId?: string;
+  performanceScore?: number;
+  agentLoopMetadata?: Record<string, unknown>;
 }
 
 export async function insertContent(
@@ -129,6 +133,9 @@ export async function insertContent(
   if (data.cta) metadata.cta = data.cta;
   if (data.scheduledDate) metadata.scheduledDate = data.scheduledDate;
   if (data.scheduledTime) metadata.scheduledTime = data.scheduledTime;
+  if (data.agentLoopMetadata) {
+    Object.assign(metadata, { agentLoop: data.agentLoopMetadata });
+  }
 
   const [row] = await db
     .insert(contentItemsTable)
@@ -142,6 +149,7 @@ export async function insertContent(
       scheduledAt,
       metadata,
       campaignId: data.campaignId || null,
+      performanceScore: data.performanceScore ?? null,
     })
     .returning();
 

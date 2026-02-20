@@ -5,28 +5,24 @@ import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 import {
   LayoutDashboard,
+  CalendarClock,
   MessageSquare,
   Megaphone,
   FileText,
-  BarChart3,
-  Palette,
   Settings,
   Bot,
   ChevronLeft,
-  Sparkles,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useState } from "react";
 import { CLIENT_DEFAULT_ORG_NAME } from "@/lib/client-config";
 
 const navItems = [
-  { href: "/", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/setup", label: "Setup Wizard", icon: Sparkles },
-  { href: "/chat", label: "Chat with Mo", icon: MessageSquare },
-  { href: "/campaigns", label: "Campaigns", icon: Megaphone },
+  { href: "/", label: "Home", icon: LayoutDashboard },
+  { href: "/plan", label: "Plan", icon: CalendarClock },
   { href: "/content", label: "Content", icon: FileText },
-  { href: "/analytics", label: "Analytics", icon: BarChart3 },
-  { href: "/brand", label: "Brand", icon: Palette },
+  { href: "/campaigns", label: "Campaigns", icon: Megaphone },
+  { href: "/chat", label: "Chat", icon: MessageSquare },
   { href: "/settings", label: "Settings", icon: Settings },
 ];
 

@@ -10,24 +10,7 @@ import { insertContent } from "@/lib/db/content";
 import { checkUsageLimit, recordUsage } from "@/lib/usage/tracker";
 import { db } from "@/lib/db/client";
 import { brandProfiles } from "@/lib/db/schema";
-import type { Platform } from "@/lib/types";
-
-const WEEKLY_SCHEDULE: { day: number; time: string; platform: Platform }[] = [
-  { day: 1, time: "12:00", platform: "tiktok" },
-  { day: 1, time: "18:00", platform: "instagram" },
-  { day: 2, time: "12:00", platform: "tiktok" },
-  { day: 2, time: "17:00", platform: "twitter" },
-  { day: 3, time: "12:00", platform: "tiktok" },
-  { day: 3, time: "18:00", platform: "instagram" },
-  { day: 4, time: "12:00", platform: "tiktok" },
-  { day: 4, time: "17:00", platform: "twitter" },
-  { day: 5, time: "12:00", platform: "tiktok" },
-  { day: 5, time: "18:00", platform: "instagram" },
-  { day: 6, time: "11:00", platform: "tiktok" },
-  { day: 6, time: "15:00", platform: "instagram" },
-  { day: 0, time: "14:00", platform: "tiktok" },
-  { day: 0, time: "18:00", platform: "instagram" },
-];
+import { getOrgCadence } from "@/lib/cadence/defaults";
 
 const DAY_NAMES = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
@@ -102,6 +85,7 @@ export async function POST(req: Request) {
   };
 
   const org = await resolveOrgFromRequest(req, body, user.orgId);
+  const cadence = await getOrgCadence(org.id);
 
   // Fetch org's brand profile from DB
   const [brand] = await db
@@ -135,9 +119,9 @@ export async function POST(req: Request) {
   monday.setDate(now.getDate() - ((now.getDay() + 6) % 7));
 
   const results = await Promise.all(
-    WEEKLY_SCHEDULE.map(async (slot, i) => {
+    cadence.map(async (slot, i) => {
       const topic = topics[i % topics.length];
-      const pillar = pickWeightedPillar(pillars);
+      const pillar = slot.contentPillar || pickWeightedPillar(pillars);
 
       const prompt = buildContentGenerationPrompt(
         slot.platform,
@@ -181,7 +165,7 @@ export async function POST(req: Request) {
 
       // Calculate the actual date for this slot
       const slotDate = new Date(monday);
-      const daysFromMonday = slot.day === 0 ? 6 : slot.day - 1;
+      const daysFromMonday = slot.dayOfWeek === 0 ? 6 : slot.dayOfWeek - 1;
       slotDate.setDate(monday.getDate() + daysFromMonday);
       const dateStr = slotDate.toISOString().split("T")[0];
 
@@ -194,13 +178,13 @@ export async function POST(req: Request) {
         pillar: parsed.pillar || pillar,
         topic,
         scheduledDate: dateStr,
-        scheduledTime: slot.time,
+        scheduledTime: slot.timeSlot,
         campaignId,
       });
 
       return {
         ...item,
-        dayName: DAY_NAMES[slot.day],
+        dayName: DAY_NAMES[slot.dayOfWeek],
       };
     })
   );

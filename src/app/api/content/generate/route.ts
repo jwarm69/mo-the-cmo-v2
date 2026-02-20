@@ -7,6 +7,7 @@ import { requireAuth } from "@/lib/api/session";
 import { resolveOrgFromRequest } from "@/lib/api/org";
 import { insertContent } from "@/lib/db/content";
 import { checkUsageLimit, recordUsage } from "@/lib/usage/tracker";
+import { runAgentLoop } from "@/lib/ai/agent-loop/runner";
 import type { Platform } from "@/lib/types";
 
 export async function POST(req: Request) {
@@ -27,12 +28,20 @@ export async function POST(req: Request) {
   }
 
   const body = await req.json();
-  const { platform, topic, pillar, campaignId } = body as {
+  const {
+    platform,
+    topic,
+    pillar,
+    campaignId,
+    useAgentLoop: useAgentLoopRaw,
+  } = body as {
     platform: Platform;
     topic: string;
     pillar?: string;
     campaignId?: string;
+    useAgentLoop?: boolean;
   };
+  const useAgentLoop = useAgentLoopRaw !== false;
 
   if (!platform || !topic) {
     return NextResponse.json(
@@ -42,7 +51,56 @@ export async function POST(req: Request) {
   }
 
   const org = await resolveOrgFromRequest(req, body, user.orgId);
-  const { brandContext, ragContext } = await assembleContext(org.id, topic);
+  const { brandContext, ragContext, learnings, preferences } = await assembleContext(org.id, topic);
+
+  // ── Agent Loop path ─────────────────────────────────────────────
+  if (useAgentLoop) {
+    const result = await runAgentLoop({
+      platform,
+      topic,
+      pillar,
+      brandContext,
+      ragContext,
+      learnings,
+      preferences,
+    });
+
+    // Record usage for each step
+    if (!user.isApiKeyUser) {
+      for (const step of result.stepUsages) {
+        await recordUsage({
+          userId: user.id,
+          orgId: org.id,
+          model: step.model,
+          route: "/api/content/generate[agent-loop]",
+          inputTokens: step.inputTokens,
+          outputTokens: step.outputTokens,
+        });
+      }
+    }
+
+    const item = await insertContent(org.id, {
+      platform,
+      hook: result.finalDraft.hook,
+      body: result.finalDraft.body,
+      cta: result.finalDraft.cta,
+      hashtags: result.finalDraft.hashtags,
+      pillar: result.finalDraft.pillar || pillar || "General",
+      topic,
+      campaignId,
+      performanceScore: result.score.overall,
+      agentLoopMetadata: {
+        brief: result.brief,
+        criticFeedback: result.criticFeedback,
+        score: result.score,
+        totalTokensUsed: result.totalTokensUsed,
+      },
+    });
+
+    return NextResponse.json(item);
+  }
+
+  // ── Single-shot path (unchanged) ───────────────────────────────
   const prompt = buildContentGenerationPrompt(
     platform,
     topic,
