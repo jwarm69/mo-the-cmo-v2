@@ -104,16 +104,18 @@ export default function ContentPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h2 className="text-2xl font-bold tracking-tight">Content</h2>
-          <p className="text-muted-foreground">
+          <h2 className="text-xl md:text-2xl font-bold tracking-tight">Content</h2>
+          <p className="text-sm md:text-base text-muted-foreground">
             Manage your content library, calendar, and approvals.
           </p>
         </div>
         <div className="flex gap-2">
           <Button
             variant="outline"
+            size="sm"
+            className="md:size-default"
             onClick={handleBulkGenerate}
             disabled={bulkLoading}
           >
@@ -134,23 +136,26 @@ export default function ContentPage() {
       </div>
 
       <Tabs defaultValue="library">
-        <TabsList>
-          <TabsTrigger value="library" className="gap-2">
+        <TabsList className="w-full sm:w-auto">
+          <TabsTrigger value="library" className="gap-1 md:gap-2 flex-1 sm:flex-none">
             <FileText className="h-4 w-4" />
-            Library
+            <span className="hidden sm:inline">Library</span>
+            <span className="sm:hidden">Lib</span>
             {items.length > 0 && (
               <Badge variant="secondary" className="ml-1">
                 {items.length}
               </Badge>
             )}
           </TabsTrigger>
-          <TabsTrigger value="calendar" className="gap-2">
+          <TabsTrigger value="calendar" className="gap-1 md:gap-2 flex-1 sm:flex-none">
             <Calendar className="h-4 w-4" />
-            Calendar
+            <span className="hidden sm:inline">Calendar</span>
+            <span className="sm:hidden">Cal</span>
           </TabsTrigger>
-          <TabsTrigger value="approvals" className="gap-2">
+          <TabsTrigger value="approvals" className="gap-1 md:gap-2 flex-1 sm:flex-none">
             <CheckSquare className="h-4 w-4" />
-            Approvals
+            <span className="hidden sm:inline">Approvals</span>
+            <span className="sm:hidden">Appr</span>
             {pendingItems.length > 0 && (
               <Badge variant="secondary" className="ml-1">
                 {pendingItems.length}
@@ -160,9 +165,9 @@ export default function ContentPage() {
         </TabsList>
 
         <TabsContent value="library" className="space-y-4">
-          <div className="flex gap-2">
+          <div className="flex gap-2 flex-wrap">
             <Select value={platformFilter} onValueChange={setPlatformFilter}>
-              <SelectTrigger className="w-[140px]">
+              <SelectTrigger className="w-[130px] sm:w-[140px]">
                 <SelectValue placeholder="Platform" />
               </SelectTrigger>
               <SelectContent>
@@ -175,7 +180,7 @@ export default function ContentPage() {
               </SelectContent>
             </Select>
             <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="w-[140px]">
+              <SelectTrigger className="w-[130px] sm:w-[140px]">
                 <SelectValue placeholder="Status" />
               </SelectTrigger>
               <SelectContent>

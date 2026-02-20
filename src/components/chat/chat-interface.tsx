@@ -64,20 +64,20 @@ export function ChatInterface() {
   return (
     <div className="flex h-full flex-col">
       {/* Messages Area */}
-      <div className="flex-1 overflow-y-auto pr-4 min-h-0" ref={scrollRef}>
-        <div className="space-y-6 pb-4">
+      <div className="flex-1 overflow-y-auto pr-2 md:pr-4 min-h-0" ref={scrollRef}>
+        <div className="space-y-4 md:space-y-6 pb-4">
           {messages.length === 0 && (
-            <div className="flex flex-col items-center justify-center py-12 text-center">
-              <Bot className="mb-4 h-12 w-12 text-muted-foreground" />
-              <h3 className="mb-2 text-lg font-semibold">
+            <div className="flex flex-col items-center justify-center py-8 md:py-12 text-center">
+              <Bot className="mb-4 h-10 w-10 md:h-12 md:w-12 text-muted-foreground" />
+              <h3 className="mb-2 text-base md:text-lg font-semibold">
                 Chat with Mo — {CLIENT_DEFAULT_ORG_NAME} CMO
               </h3>
-              <p className="mb-6 max-w-md text-sm text-muted-foreground">
+              <p className="mb-4 md:mb-6 max-w-md text-sm text-muted-foreground px-2">
                 I&apos;m the {CLIENT_DEFAULT_ORG_NAME} CMO. Ask me to create
                 content, plan campaigns, analyze performance, or brainstorm
                 marketing ideas.
               </p>
-              <div className="grid gap-2 sm:grid-cols-2">
+              <div className="grid gap-2 grid-cols-1 sm:grid-cols-2 w-full max-w-md px-2">
                 {[
                   `Write a short-form video script for ${CLIENT_DEFAULT_ORG_NAME}`,
                   "Plan a campaign for next month with clear KPIs",
@@ -124,7 +124,7 @@ export function ChatInterface() {
               </Avatar>
               <div
                 className={cn(
-                  "flex max-w-[80%] flex-col gap-1",
+                  "flex max-w-[85%] md:max-w-[80%] flex-col gap-1",
                   message.role === "user" && "items-end"
                 )}
               >
@@ -185,7 +185,7 @@ export function ChatInterface() {
       </div>
 
       {/* Input Area */}
-      <div className="border-t pt-4">
+      <div className="border-t pt-3 md:pt-4">
         <div className="flex items-end gap-2">
           <Textarea
             ref={textareaRef}
@@ -193,20 +193,20 @@ export function ChatInterface() {
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={handleKeyDown}
             placeholder="Ask Mo anything about marketing..."
-            className="min-h-[60px] max-h-[200px] resize-none"
-            rows={2}
+            className="min-h-[44px] md:min-h-[60px] max-h-[120px] md:max-h-[200px] resize-none text-base md:text-sm"
+            rows={1}
           />
           <Button
             type="button"
             size="icon"
             disabled={isLoading || !input.trim()}
             onClick={handleSend}
-            className="h-[60px] w-[60px] shrink-0"
+            className="h-[44px] w-[44px] md:h-[60px] md:w-[60px] shrink-0"
           >
-            <Send className="h-5 w-5" />
+            <Send className="h-4 w-4 md:h-5 md:w-5" />
           </Button>
         </div>
-        <p className="mt-2 text-xs text-muted-foreground">
+        <p className="mt-1 md:mt-2 text-xs text-muted-foreground hidden sm:block">
           Mo routes requests by task type to optimize quality and cost. Press
           Enter to send, Shift+Enter for new line.
         </p>

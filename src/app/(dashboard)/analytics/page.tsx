@@ -5,8 +5,8 @@ export default function AnalyticsPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-2xl font-bold tracking-tight">Analytics</h2>
-        <p className="text-muted-foreground">
+        <h2 className="text-xl md:text-2xl font-bold tracking-tight">Analytics</h2>
+        <p className="text-sm md:text-base text-muted-foreground">
           Track performance across all your marketing channels.
         </p>
       </div>

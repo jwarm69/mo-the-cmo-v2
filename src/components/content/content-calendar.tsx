@@ -43,11 +43,11 @@ export function ContentCalendar({ items }: { items: ContentItem[] }) {
   }
 
   return (
-    <div className="grid grid-cols-7 gap-2">
+    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-7 gap-2">
       {week.map((day) => {
         const dayItems = grouped.get(day.dateStr) || [];
         return (
-          <Card key={day.dateStr} className="min-h-[200px]">
+          <Card key={day.dateStr} className="min-h-[120px] md:min-h-[200px]">
             <CardHeader className="pb-2 px-3 pt-3">
               <CardTitle className="text-xs font-medium text-muted-foreground">
                 {day.label}
