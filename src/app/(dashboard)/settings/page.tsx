@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Settings, Sun, Moon, Terminal } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { CadenceEditor } from "@/components/settings/cadence-editor";
 
 const themes = [
   {
@@ -94,6 +95,8 @@ export default function SettingsPage() {
           </div>
         </CardContent>
       </Card>
+
+      <CadenceEditor />
 
       <Card>
         <CardHeader>
