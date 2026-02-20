@@ -13,6 +13,7 @@ export async function POST(req: Request) {
   const auth = await requireAuth(req);
   if (auth.error) return auth.error;
   const { user } = auth;
+  const memoryUserId = user.isApiKeyUser ? undefined : user.id;
 
   if (!user.isApiKeyUser) {
     const usage = await checkUsageLimit(user.id, user.usageLimitCents);
@@ -45,7 +46,11 @@ export async function POST(req: Request) {
   }
 
   const { brandContext, ragContext, learnings, preferences, currentState } =
-    await assembleContext(org.id, source.topic || source.body.slice(0, 100));
+    await assembleContext(
+      org.id,
+      source.topic || source.body.slice(0, 100),
+      memoryUserId
+    );
 
   const prompt = `You are Mo, an expert marketing content creator. Repurpose the following content for ${targetPlatform}.
 

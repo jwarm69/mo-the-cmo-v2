@@ -25,8 +25,13 @@ const confidenceWeight: Record<Learning["confidence"], number> = {
 export async function getRelevantLearnings(
   orgId: string,
   query: string,
-  limit: number = 5
+  limit: number = 5,
+  userId?: string
 ): Promise<Learning[]> {
+  const visibleLearningFilter = userId
+    ? sql`(${agentLearnings.userId} IS NULL OR ${agentLearnings.userId} = ${userId})`
+    : sql`${agentLearnings.userId} IS NULL`;
+
   // Try vector search first
   try {
     const queryEmbedding = await generateEmbedding(query);
@@ -50,7 +55,8 @@ export async function getRelevantLearnings(
         .where(
           and(
             eq(learningEmbeddings.orgId, orgId),
-            isNotNull(learningEmbeddings.embedding)
+            isNotNull(learningEmbeddings.embedding),
+            visibleLearningFilter
           )
         )
         .orderBy(sql`${learningEmbeddings.embedding} <=> ${embeddingStr}::vector`)
@@ -74,7 +80,7 @@ export async function getRelevantLearnings(
       weight: agentLearnings.weight,
     })
     .from(agentLearnings)
-    .where(eq(agentLearnings.orgId, orgId))
+    .where(and(eq(agentLearnings.orgId, orgId), visibleLearningFilter))
     .orderBy(desc(agentLearnings.updatedAt))
     .limit(50);
 
@@ -91,12 +97,14 @@ export async function getRelevantLearnings(
 
 export async function storeLearning(
   orgId: string,
-  learning: Omit<Learning, "id">
+  learning: Omit<Learning, "id">,
+  userId?: string
 ): Promise<Learning> {
   const [created] = await db
     .insert(agentLearnings)
     .values({
       orgId,
+      userId,
       type: "pattern_recognition",
       category: learning.category,
       insight: learning.insight,
@@ -119,6 +127,7 @@ export async function storeLearning(
       await db.insert(learningEmbeddings).values({
         learningId: created.id,
         orgId,
+        userId,
         embedding,
       });
     }

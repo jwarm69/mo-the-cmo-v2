@@ -26,6 +26,7 @@ export async function POST(req: Request) {
   const auth = await requireAuth(req);
   if (auth.error) return auth.error;
   const { user } = auth;
+  const memoryUserId = user.isApiKeyUser ? undefined : user.id;
 
   try {
     // Pre-check usage limit
@@ -69,13 +70,13 @@ export async function POST(req: Request) {
           category: "explicit_preference",
           confidence: "high",
           weight: 3.0,
-        });
+        }, memoryUserId);
       } catch {
         // Non-critical
       }
     }
 
-    const assembled = await assembleContext(org.id, lastText);
+    const assembled = await assembleContext(org.id, lastText, memoryUserId);
     const { model, systemPrompt } = await orchestrate(lastText, {
       brandProfile: assembled.brandContext,
       ragContext: assembled.ragContext,
@@ -112,7 +113,7 @@ export async function POST(req: Request) {
               category: "user_correction",
               confidence: "medium",
               weight: 2.0,
-            });
+            }, memoryUserId);
           } catch {
             // Non-critical
           }

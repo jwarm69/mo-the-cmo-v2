@@ -34,6 +34,7 @@ export async function PUT(req: Request) {
   const auth = await requireAuth(req);
   if (auth.error) return auth.error;
   const { user } = auth;
+  const memoryUserId = user.isApiKeyUser ? undefined : user.id;
 
   const org = await resolveOrgFromRequest(req, undefined, user.orgId);
   const { id, ...updates } = await req.json();
@@ -62,7 +63,7 @@ export async function PUT(req: Request) {
         category: "content_editing",
         confidence: "medium",
         weight: 1.5,
-      });
+      }, memoryUserId);
     } catch {
       // Non-critical — don't fail the update
     }

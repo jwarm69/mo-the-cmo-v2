@@ -34,6 +34,7 @@ export async function POST(req: Request) {
   const auth = await requireAuth(req);
   if (auth.error) return auth.error;
   const { user } = auth;
+  const memoryUserId = user.isApiKeyUser ? undefined : user.id;
 
   if (!user.isApiKeyUser) {
     const usage = await checkUsageLimit(user.id, user.usageLimitCents);
@@ -74,7 +75,7 @@ export async function POST(req: Request) {
   const cadence = await getOrgCadence(org.id);
 
   // 3. Full context assembly (brand, RAG, learnings, preferences, current state)
-  const context = await assembleContext(org.id, "weekly content plan");
+  const context = await assembleContext(org.id, "weekly content plan", memoryUserId);
 
   // 4. Active campaigns
   const activeCampaigns = await db

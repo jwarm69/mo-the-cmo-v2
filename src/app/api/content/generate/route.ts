@@ -14,6 +14,7 @@ export async function POST(req: Request) {
   const auth = await requireAuth(req);
   if (auth.error) return auth.error;
   const { user } = auth;
+  const memoryUserId = user.isApiKeyUser ? undefined : user.id;
 
   if (!user.isApiKeyUser) {
     const usage = await checkUsageLimit(user.id, user.usageLimitCents);
@@ -52,7 +53,7 @@ export async function POST(req: Request) {
 
   const org = await resolveOrgFromRequest(req, body, user.orgId);
   const { brandContext, ragContext, learnings, preferences, currentState } =
-    await assembleContext(org.id, topic);
+    await assembleContext(org.id, topic, memoryUserId);
 
   // ── Agent Loop path ─────────────────────────────────────────────
   if (useAgentLoop) {

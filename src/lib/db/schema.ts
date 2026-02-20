@@ -277,6 +277,7 @@ export const agentLearnings = pgTable(
     orgId: uuid("org_id")
       .references(() => organizations.id)
       .notNull(),
+    userId: uuid("user_id").references(() => userProfiles.id),
     type: learningTypeEnum("type").notNull(),
     category: text("category").notNull(),
     insight: text("insight").notNull(),
@@ -293,6 +294,11 @@ export const agentLearnings = pgTable(
   },
   (table) => [
     index("agent_learnings_org_cat_idx").on(table.orgId, table.category),
+    index("agent_learnings_org_user_cat_idx").on(
+      table.orgId,
+      table.userId,
+      table.category
+    ),
     index("agent_learnings_confidence_idx").on(table.confidence),
   ]
 );
@@ -351,17 +357,22 @@ export const knowledgeChunks = pgTable(
 
 // ─── Learning Embeddings ─────────────────────────────────────────────
 
-export const learningEmbeddings = pgTable("learning_embeddings", {
-  id: uuid("id").primaryKey().defaultRandom(),
-  learningId: uuid("learning_id")
-    .references(() => agentLearnings.id)
-    .notNull(),
-  orgId: uuid("org_id")
-    .references(() => organizations.id)
-    .notNull(),
-  embedding: vector("embedding", { dimensions: 1536 }),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-});
+export const learningEmbeddings = pgTable(
+  "learning_embeddings",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    learningId: uuid("learning_id")
+      .references(() => agentLearnings.id)
+      .notNull(),
+    orgId: uuid("org_id")
+      .references(() => organizations.id)
+      .notNull(),
+    userId: uuid("user_id").references(() => userProfiles.id),
+    embedding: vector("embedding", { dimensions: 1536 }),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+  },
+  (table) => [index("learning_embeddings_org_user_idx").on(table.orgId, table.userId)]
+);
 
 // ─── Approval Requests ───────────────────────────────────────────────
 
