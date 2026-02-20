@@ -43,3 +43,5 @@ knowledge/.cache/
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+.env*.local
+supabase/.temp/
