@@ -44,7 +44,8 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Source content not found" }, { status: 404 });
   }
 
-  const { brandContext } = await assembleContext(org.id, source.topic || source.body.slice(0, 100));
+  const { brandContext, ragContext, learnings, preferences, currentState } =
+    await assembleContext(org.id, source.topic || source.body.slice(0, 100));
 
   const prompt = `You are Mo, an expert marketing content creator. Repurpose the following content for ${targetPlatform}.
 
@@ -59,6 +60,10 @@ Pillar: ${source.pillar}
 ${PLATFORM_TEMPLATES[targetPlatform]}
 
 ${brandContext ? `## Brand Context\n${brandContext}` : ""}
+${ragContext ? `\n## Knowledge Base Context\n${ragContext}` : ""}
+${learnings ? `\n## What We've Learned\nApply these validated insights from past performance:\n${learnings}` : ""}
+${preferences ? `\n## User Preferences\nRespect these explicit preferences:\n${preferences}` : ""}
+${currentState ? `\n## Current State\nBe aware of what's already scheduled and published — avoid repetition:\n${currentState}` : ""}
 
 ## Instructions
 Adapt this content for ${targetPlatform} while preserving the core message and value. Adjust length, tone, formatting, and hashtags to match the target platform's best practices.

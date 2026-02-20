@@ -55,4 +55,5 @@ export interface AgentLoopConfig {
   ragContext: string;
   learnings: string;
   preferences: string;
+  currentState: string;
 }

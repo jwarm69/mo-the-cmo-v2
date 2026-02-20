@@ -7,6 +7,9 @@ function contextBlock(config: AgentLoopConfig): string {
   if (config.ragContext) block += `\n\n## Knowledge Base\n${config.ragContext}`;
   if (config.learnings) block += `\n\n## Past Learnings\n${config.learnings}`;
   if (config.preferences) block += `\n\n## User Preferences\n${config.preferences}`;
+  if (config.currentState) {
+    block += `\n\n## Current State\nUse this to avoid repeating already scheduled/published content:\n${config.currentState}`;
+  }
   return block;
 }
 

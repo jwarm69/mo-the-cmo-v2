@@ -51,7 +51,8 @@ export async function POST(req: Request) {
   }
 
   const org = await resolveOrgFromRequest(req, body, user.orgId);
-  const { brandContext, ragContext, learnings, preferences } = await assembleContext(org.id, topic);
+  const { brandContext, ragContext, learnings, preferences, currentState } =
+    await assembleContext(org.id, topic);
 
   // ── Agent Loop path ─────────────────────────────────────────────
   if (useAgentLoop) {
@@ -63,6 +64,7 @@ export async function POST(req: Request) {
       ragContext,
       learnings,
       preferences,
+      currentState,
     });
 
     // Record usage for each step
@@ -106,7 +108,12 @@ export async function POST(req: Request) {
     topic,
     pillar,
     brandContext,
-    ragContext
+    ragContext,
+    {
+      learnings,
+      preferences,
+      currentState,
+    }
   );
 
   const { text, usage } = await generateText({
