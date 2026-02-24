@@ -12,7 +12,6 @@ import {
   ArrowRight,
 } from "lucide-react";
 import Link from "next/link";
-import { buildClientApiHeaders } from "@/lib/client-config";
 
 interface Suggestion {
   id: string;
@@ -38,9 +37,7 @@ export function SuggestionCards() {
   useEffect(() => {
     async function fetchSuggestions() {
       try {
-        const res = await fetch("/api/suggestions", {
-          headers: buildClientApiHeaders(),
-        });
+        const res = await fetch("/api/suggestions");
         if (res.ok) {
           setSuggestions(await res.json());
         }

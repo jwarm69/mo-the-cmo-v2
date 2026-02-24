@@ -10,7 +10,6 @@ import {
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Loader2, BarChart3, PieChart, Activity, Brain, BookOpen } from "lucide-react";
-import { buildClientApiHeaders } from "@/lib/client-config";
 import {
   BarChart,
   Bar,
@@ -57,9 +56,7 @@ export default function AnalyticsPage() {
   useEffect(() => {
     async function fetchAnalytics() {
       try {
-        const res = await fetch("/api/analytics", {
-          headers: buildClientApiHeaders(),
-        });
+        const res = await fetch("/api/analytics");
         if (res.ok) {
           setData(await res.json());
         }

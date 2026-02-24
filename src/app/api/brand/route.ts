@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { eq } from "drizzle-orm";
 import { db } from "@/lib/db/client";
-import { brandProfiles, userProfiles } from "@/lib/db/schema";
+import { brandProfiles, orgMemberships, userProfiles } from "@/lib/db/schema";
 import { requireAuth } from "@/lib/api/session";
 import { resolveOrgFromRequest } from "@/lib/api/org";
 import {
@@ -84,12 +84,17 @@ export async function POST(req: Request) {
       })
       .returning();
 
-    // Auto-link user to org if they don't have one yet (e.g. first-time setup)
-    if (!user.orgId && !user.isApiKeyUser) {
+    // Auto-link user to org + create membership (first-time setup or adding new profile)
+    if (!user.isApiKeyUser) {
       await db
         .update(userProfiles)
         .set({ orgId: org.id, updatedAt: new Date() })
         .where(eq(userProfiles.id, user.id));
+
+      await db
+        .insert(orgMemberships)
+        .values({ userId: user.id, orgId: org.id, role: "owner" })
+        .onConflictDoNothing();
     }
 
     return NextResponse.json({ org, profile });

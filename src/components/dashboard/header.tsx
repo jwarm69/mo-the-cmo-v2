@@ -5,9 +5,9 @@ import { useRouter } from "next/navigation";
 import { Bot, LogOut, Menu } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { CLIENT_DEFAULT_ORG_NAME } from "@/lib/client-config";
 import { createClient } from "@/lib/supabase/client";
 import { useSidebar } from "./sidebar-context";
+import { useOrg } from "./org-context";
 
 interface HeaderProps {
   userEmail: string;
@@ -17,6 +17,7 @@ interface HeaderProps {
 export function Header({ userEmail, usageLimitCents }: HeaderProps) {
   const router = useRouter();
   const { toggleMobile } = useSidebar();
+  const { activeOrg } = useOrg();
   const [spentCents, setSpentCents] = useState(0);
 
   useEffect(() => {
@@ -37,6 +38,7 @@ export function Header({ userEmail, usageLimitCents }: HeaderProps) {
     router.refresh();
   };
 
+  const orgName = activeOrg?.name ?? "Your Brand";
   const spent = (spentCents / 100).toFixed(2);
   const limit = (usageLimitCents / 100).toFixed(2);
 
@@ -54,7 +56,7 @@ export function Header({ userEmail, usageLimitCents }: HeaderProps) {
         </Button>
         <h1 className="text-base md:text-lg font-semibold truncate">
           Mo <span className="text-muted-foreground font-normal">—</span>{" "}
-          <span className="text-primary">{CLIENT_DEFAULT_ORG_NAME}</span>{" "}
+          <span className="text-primary">{orgName}</span>{" "}
           <span className="hidden sm:inline">CMO</span>
         </h1>
         <Badge variant="secondary" className="text-xs hidden sm:inline-flex">

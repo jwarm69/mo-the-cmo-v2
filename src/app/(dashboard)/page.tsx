@@ -5,7 +5,6 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { buildClientApiHeaders, CLIENT_DEFAULT_ORG_SLUG } from "@/lib/client-config";
 import { DEFAULT_BRAND_PROFILE } from "@/lib/brand/defaults";
 import { ArrowRight, CheckCircle2, Sparkles, Zap } from "lucide-react";
 
@@ -54,12 +53,9 @@ export default function DashboardPage() {
   async function load() {
     try {
       const [brandRes, statsRes, queueRes] = await Promise.all([
-        fetch(
-          `/api/brand?orgSlug=${encodeURIComponent(CLIENT_DEFAULT_ORG_SLUG)}`,
-          { headers: buildClientApiHeaders() }
-        ),
-        fetch("/api/dashboard/stats", { headers: buildClientApiHeaders() }),
-        fetch("/api/queue", { headers: buildClientApiHeaders() }),
+        fetch("/api/brand"),
+        fetch("/api/dashboard/stats"),
+        fetch("/api/queue"),
       ]);
 
       const brandData = await brandRes.json();

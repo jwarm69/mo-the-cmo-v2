@@ -19,7 +19,6 @@ import {
   Sparkles,
   CheckCircle2,
 } from "lucide-react";
-import { buildClientApiHeaders } from "@/lib/client-config";
 import { toast } from "sonner";
 
 interface UploadedFile {
@@ -104,7 +103,6 @@ export function StepKnowledge({ brandContext }: StepKnowledgeProps) {
 
       const res = await fetch("/api/brand/knowledge/upload", {
         method: "POST",
-        headers: buildClientApiHeaders(),
         body: formData,
       });
 
@@ -132,10 +130,7 @@ export function StepKnowledge({ brandContext }: StepKnowledgeProps) {
     try {
       const res = await fetch("/api/brand/knowledge/distill", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          ...buildClientApiHeaders(),
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ brandContext }),
       });
 

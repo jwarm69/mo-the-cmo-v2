@@ -20,18 +20,13 @@ import {
   normalizeBrandProfile,
   type BrandProfileInput,
 } from "@/lib/brand/defaults";
-import {
-  buildClientApiHeaders,
-  CLIENT_DEFAULT_ORG_NAME,
-  CLIENT_DEFAULT_ORG_SLUG,
-} from "@/lib/client-config";
 import { KnowledgeList } from "@/components/content/knowledge-list";
 import { KnowledgeUpload } from "@/components/brand/knowledge-upload";
 
 export default function BrandPage() {
   const [brand, setBrand] = useState<BrandProfileInput>({
     ...DEFAULT_BRAND_PROFILE,
-    name: CLIENT_DEFAULT_ORG_NAME,
+    name: "",
   });
   const [saved, setSaved] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -45,10 +40,7 @@ export default function BrandPage() {
         setIsLoading(true);
         setError(null);
 
-        const response = await fetch(
-          `/api/brand?orgSlug=${encodeURIComponent(CLIENT_DEFAULT_ORG_SLUG)}`,
-          { headers: buildClientApiHeaders() }
-        );
+        const response = await fetch("/api/brand");
         const data = (await response.json()) as {
           error?: string;
           profile?: Partial<BrandProfileInput> | null;
@@ -62,7 +54,7 @@ export default function BrandPage() {
         setBrand(
           normalizeBrandProfile({
             ...data.profile,
-            name: data.profile?.name ?? CLIENT_DEFAULT_ORG_NAME,
+            name: data.profile?.name ?? "Your Brand",
           })
         );
       } catch (loadError) {
@@ -86,14 +78,8 @@ export default function BrandPage() {
 
       const response = await fetch("/api/brand", {
         method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-          ...buildClientApiHeaders(),
-        },
-        body: JSON.stringify({
-          orgSlug: CLIENT_DEFAULT_ORG_SLUG,
-          ...brand,
-        }),
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(brand),
       });
 
       const data = (await response.json()) as {

@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 import {
   LayoutDashboard,
@@ -13,11 +13,21 @@ import {
   Bot,
   ChevronLeft,
   X,
+  Check,
+  ChevronsUpDown,
+  Plus,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { useState } from "react";
-import { CLIENT_DEFAULT_ORG_NAME } from "@/lib/client-config";
 import { useSidebar } from "./sidebar-context";
+import { useOrg } from "./org-context";
 
 const navItems = [
   { href: "/", label: "Home", icon: LayoutDashboard },
@@ -30,8 +40,10 @@ const navItems = [
 
 export function Sidebar() {
   const pathname = usePathname();
+  const router = useRouter();
   const [collapsed, setCollapsed] = useState(false);
   const { mobileOpen, setMobileOpen } = useSidebar();
+  const { activeOrg, orgs, switchOrg } = useOrg();
 
   const handleNavClick = () => {
     // Close mobile sidebar on navigation
@@ -47,7 +59,7 @@ export function Sidebar() {
           <div className="flex flex-col">
             <span className="text-lg font-bold leading-tight">Mo</span>
             <span className="text-xs text-muted-foreground leading-tight">
-              {CLIENT_DEFAULT_ORG_NAME} CMO
+              {activeOrg?.name ?? "Your Brand"} CMO
             </span>
           </div>
         )}
@@ -104,13 +116,50 @@ export function Sidebar() {
         })}
       </nav>
 
-      {/* Footer */}
+      {/* Footer — Org Switcher */}
       {(!collapsed || mobileOpen) && (
         <div className="border-t p-4">
-          <div className="rounded-lg bg-muted p-3">
-            <p className="text-xs font-medium">{CLIENT_DEFAULT_ORG_NAME}</p>
-            <p className="text-xs text-muted-foreground">Phase A - Active</p>
-          </div>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button className="flex w-full items-center justify-between rounded-lg bg-muted p-3 text-left transition-colors hover:bg-muted/80">
+                <div className="min-w-0">
+                  <p className="truncate text-xs font-medium">
+                    {activeOrg?.name ?? "Your Brand"}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    Active Profile
+                  </p>
+                </div>
+                <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 text-muted-foreground" />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start" className="w-56">
+              {orgs.map((org) => (
+                <DropdownMenuItem
+                  key={org.id}
+                  onClick={() => {
+                    if (!org.isActive) {
+                      switchOrg(org.id);
+                    }
+                  }}
+                  className="flex items-center justify-between"
+                >
+                  <span className="truncate">{org.name}</span>
+                  {org.isActive && (
+                    <Check className="ml-2 h-4 w-4 shrink-0 text-primary" />
+                  )}
+                </DropdownMenuItem>
+              ))}
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                onClick={() => router.push("/setup")}
+                className="flex items-center gap-2"
+              >
+                <Plus className="h-4 w-4" />
+                Add Business Profile
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       )}
     </>

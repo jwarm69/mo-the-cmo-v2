@@ -11,13 +11,15 @@ import { Bot, Send, User, Loader2, AlertCircle } from "lucide-react";
 import { useRef, useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
-import { CLIENT_DEFAULT_ORG_NAME, CLIENT_DEFAULT_ORG_SLUG } from "@/lib/client-config";
+import { useOrg } from "@/components/dashboard/org-context";
 
 export function ChatInterface() {
+  const { activeOrg } = useOrg();
+  const orgName = activeOrg?.name ?? "Your Brand";
+
   const { messages, sendMessage, status, error } = useChat({
     transport: new DefaultChatTransport({
       api: "/api/chat",
-      headers: { "x-org-slug": CLIENT_DEFAULT_ORG_SLUG },
     }),
     onError: (err) => {
       toast.error("Chat error", {
@@ -70,16 +72,16 @@ export function ChatInterface() {
             <div className="flex flex-col items-center justify-center py-8 md:py-12 text-center">
               <Bot className="mb-4 h-10 w-10 md:h-12 md:w-12 text-muted-foreground" />
               <h3 className="mb-2 text-base md:text-lg font-semibold">
-                Chat with Mo — {CLIENT_DEFAULT_ORG_NAME} CMO
+                Chat with Mo — {orgName} CMO
               </h3>
               <p className="mb-4 md:mb-6 max-w-md text-sm text-muted-foreground px-2">
-                I&apos;m the {CLIENT_DEFAULT_ORG_NAME} CMO. Ask me to create
+                I&apos;m the {orgName} CMO. Ask me to create
                 content, plan campaigns, analyze performance, or brainstorm
                 marketing ideas.
               </p>
               <div className="grid gap-2 grid-cols-1 sm:grid-cols-2 w-full max-w-md px-2">
                 {[
-                  `Write a short-form video script for ${CLIENT_DEFAULT_ORG_NAME}`,
+                  `Write a short-form video script for ${orgName}`,
                   "Plan a campaign for next month with clear KPIs",
                   "Create an Instagram caption for our current offer",
                   "What should we post this week and why?",
@@ -134,7 +136,7 @@ export function ChatInterface() {
                   </span>
                   {message.role === "assistant" && (
                     <Badge variant="secondary" className="text-[10px]">
-                      {CLIENT_DEFAULT_ORG_NAME} CMO
+                      {orgName} CMO
                     </Badge>
                   )}
                 </div>

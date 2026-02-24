@@ -21,7 +21,6 @@ import {
   DEFAULT_BRAND_PROFILE,
   type BrandProfileInput,
 } from "@/lib/brand/defaults";
-import { buildClientApiHeaders } from "@/lib/client-config";
 import { StepBasics } from "./step-basics";
 import { StepVoice } from "./step-voice";
 import { StepCustomers } from "./step-customers";
@@ -156,10 +155,7 @@ export function SetupWizard() {
 
       const res = await fetch("/api/brand", {
         method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-          ...buildClientApiHeaders(),
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           orgSlug,
           orgName: finalData.name,

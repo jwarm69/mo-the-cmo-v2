@@ -85,6 +85,27 @@ export const userProfiles = pgTable("user_profiles", {
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 
+// ─── Org Memberships ────────────────────────────────────────────────
+
+export const memberRoleEnum = pgEnum("member_role", ["owner", "admin", "member"]);
+
+export const orgMemberships = pgTable(
+  "org_memberships",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id").references(() => userProfiles.id).notNull(),
+    orgId: uuid("org_id").references(() => organizations.id).notNull(),
+    role: memberRoleEnum("role").default("owner").notNull(),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+  },
+  (table) => [
+    uniqueIndex("org_memberships_user_org_idx").on(table.userId, table.orgId),
+    index("org_memberships_user_idx").on(table.userId),
+  ]
+);
+
+export type OrgMembership = typeof orgMemberships.$inferSelect;
+
 // ─── Usage Tracking ─────────────────────────────────────────────────
 
 export const usageTracking = pgTable(
