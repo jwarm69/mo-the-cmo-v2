@@ -444,6 +444,252 @@ export const ideas = pgTable(
   ]
 );
 
+// ─── Products / Offers ─────────────────────────────────────────────
+// What the business actually sells — the foundation of all marketing strategy.
+
+export const productStatusEnum = pgEnum("product_status", [
+  "idea",
+  "developing",
+  "pre_launch",
+  "active",
+  "sunsetting",
+  "archived",
+]);
+
+export const products = pgTable(
+  "products",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    orgId: uuid("org_id")
+      .references(() => organizations.id)
+      .notNull(),
+    name: text("name").notNull(),
+    description: text("description"),
+    status: productStatusEnum("status").default("active").notNull(),
+    targetAudience: jsonb("target_audience").$type<{
+      demographics: string;
+      psychographics: string;
+      painPoints: string[];
+      goals: string[];
+    }>(),
+    pricing: jsonb("pricing").$type<{
+      amount: number;
+      currency: string;
+      model: string; // "one-time" | "subscription" | "package" | "free"
+      description?: string;
+    }>(),
+    launchDate: timestamp("launch_date"),
+    uniqueValue: text("unique_value"), // What makes this offer different
+    outcomes: jsonb("outcomes").$type<string[]>(), // What customers get / transformation
+    metadata: jsonb("metadata").$type<Record<string, unknown>>(),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  },
+  (table) => [
+    index("products_org_idx").on(table.orgId),
+    index("products_org_status_idx").on(table.orgId, table.status),
+  ]
+);
+
+// ─── Marketing Goals ───────────────────────────────────────────────
+// Measurable objectives tied to products and time horizons.
+
+export const goalTimeframeEnum = pgEnum("goal_timeframe", [
+  "weekly",
+  "monthly",
+  "quarterly",
+  "annual",
+]);
+
+export const goalStatusEnum = pgEnum("goal_status", [
+  "not_started",
+  "in_progress",
+  "on_track",
+  "at_risk",
+  "completed",
+  "missed",
+]);
+
+export const marketingGoals = pgTable(
+  "marketing_goals",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    orgId: uuid("org_id")
+      .references(() => organizations.id)
+      .notNull(),
+    productId: uuid("product_id").references(() => products.id),
+    title: text("title").notNull(),
+    description: text("description"),
+    timeframe: goalTimeframeEnum("timeframe").notNull(),
+    status: goalStatusEnum("status").default("not_started").notNull(),
+    targetMetric: text("target_metric"), // e.g., "new clients", "revenue", "email signups"
+    targetValue: real("target_value"), // e.g., 10, 5000, 500
+    currentValue: real("current_value").default(0),
+    startDate: timestamp("start_date"),
+    endDate: timestamp("end_date"),
+    parentGoalId: uuid("parent_goal_id"), // Allows quarterly → monthly → weekly hierarchy
+    metadata: jsonb("metadata").$type<Record<string, unknown>>(),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  },
+  (table) => [
+    index("goals_org_idx").on(table.orgId),
+    index("goals_org_timeframe_idx").on(table.orgId, table.timeframe),
+    index("goals_org_status_idx").on(table.orgId, table.status),
+    index("goals_product_idx").on(table.productId),
+    index("goals_parent_idx").on(table.parentGoalId),
+  ]
+);
+
+// ─── Marketing Plans ───────────────────────────────────────────────
+// Hierarchical plans: quarter → month → week, each with themes and strategy.
+
+export const planTypeEnum = pgEnum("plan_type", [
+  "quarterly",
+  "monthly",
+  "weekly",
+  "launch",     // Special: product launch plan
+  "campaign",   // Special: campaign-specific plan
+]);
+
+export const planStatusEnum = pgEnum("plan_status", [
+  "draft",
+  "active",
+  "completed",
+  "archived",
+]);
+
+export const marketingPlans = pgTable(
+  "marketing_plans",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    orgId: uuid("org_id")
+      .references(() => organizations.id)
+      .notNull(),
+    parentPlanId: uuid("parent_plan_id"), // Allows quarter → month → week nesting
+    goalId: uuid("goal_id").references(() => marketingGoals.id),
+    productId: uuid("product_id").references(() => products.id),
+    campaignId: uuid("campaign_id").references(() => campaigns.id),
+    type: planTypeEnum("type").notNull(),
+    status: planStatusEnum("status").default("draft").notNull(),
+    title: text("title").notNull(),
+    theme: text("theme"), // e.g., "Authority Building", "Launch Hype", "Community Nurturing"
+    summary: text("summary"), // AI-generated strategic overview
+    strategy: text("strategy"), // Detailed strategic direction
+    startDate: timestamp("start_date"),
+    endDate: timestamp("end_date"),
+    channelMix: jsonb("channel_mix").$type<{
+      channel: string;
+      weight: number; // percentage allocation
+      rationale: string;
+    }[]>(),
+    keyMessages: jsonb("key_messages").$type<string[]>(),
+    metadata: jsonb("metadata").$type<Record<string, unknown>>(),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  },
+  (table) => [
+    index("plans_org_idx").on(table.orgId),
+    index("plans_org_type_idx").on(table.orgId, table.type),
+    index("plans_parent_idx").on(table.parentPlanId),
+    index("plans_goal_idx").on(table.goalId),
+    index("plans_product_idx").on(table.productId),
+  ]
+);
+
+// ─── Tactics ────────────────────────────────────────────────────────
+// Specific marketing actions across ALL channels (not just social content).
+// This is where guerrilla, activation, physical, partnership tactics live.
+
+export const tacticStatusEnum = pgEnum("tactic_status", [
+  "planned",
+  "in_progress",
+  "completed",
+  "skipped",
+]);
+
+export const tactics = pgTable(
+  "tactics",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    orgId: uuid("org_id")
+      .references(() => organizations.id)
+      .notNull(),
+    planId: uuid("plan_id").references(() => marketingPlans.id),
+    campaignId: uuid("campaign_id").references(() => campaigns.id),
+    contentItemId: uuid("content_item_id").references(() => contentItems.id),
+    channel: text("channel").notNull(), // Freeform: "tiktok", "guerrilla", "local-event", "podcast-guesting", etc.
+    channelCategory: text("channel_category").notNull(), // "digital", "physical", "guerrilla", "partnership", "activation", "creative", "paid"
+    title: text("title").notNull(),
+    description: text("description"),
+    status: tacticStatusEnum("status").default("planned").notNull(),
+    scheduledDate: timestamp("scheduled_date"),
+    completedDate: timestamp("completed_date"),
+    effort: text("effort"), // "low" | "medium" | "high"
+    cost: real("cost"),
+    expectedOutcome: text("expected_outcome"),
+    actualOutcome: text("actual_outcome"),
+    notes: text("notes"),
+    metadata: jsonb("metadata").$type<Record<string, unknown>>(),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  },
+  (table) => [
+    index("tactics_org_idx").on(table.orgId),
+    index("tactics_plan_idx").on(table.planId),
+    index("tactics_org_channel_idx").on(table.orgId, table.channel),
+    index("tactics_org_status_idx").on(table.orgId, table.status),
+    index("tactics_scheduled_idx").on(table.scheduledDate),
+  ]
+);
+
+// ─── Context Entries (Unified Company Brain) ────────────────────────
+// Every meaningful piece of information about the business, auto-captured
+// from conversations, plans, decisions, feedback — all vector-searchable.
+// This is the single source of truth that powers every AI interaction.
+
+export const contextTypeEnum = pgEnum("context_type", [
+  "business_info",       // About the business itself (market, niche, location, story)
+  "product_info",        // Product details, features, outcomes, pricing
+  "audience_insight",    // Customer learnings, objections, motivations
+  "strategy_decision",   // Strategic choices (positioning, messaging, channel selection)
+  "market_insight",      // Competitive intel, trends, opportunities
+  "performance_insight", // What worked, what didn't, why
+  "brand_voice",         // Voice/tone preferences, examples, corrections
+  "goal_context",        // Goal rationale, progress notes, pivots
+  "plan_context",        // Plan summaries, strategy docs, phase descriptions
+  "conversation_extract",// Key info extracted from chat conversations
+]);
+
+export const contextEntries = pgTable(
+  "context_entries",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    orgId: uuid("org_id")
+      .references(() => organizations.id)
+      .notNull(),
+    userId: uuid("user_id").references(() => userProfiles.id),
+    type: contextTypeEnum("type").notNull(),
+    title: text("title").notNull(), // Short label for display
+    content: text("content").notNull(), // The actual knowledge
+    source: text("source").notNull(), // Where this came from: "chat", "plan_generation", "manual", "product_create", etc.
+    sourceId: text("source_id"), // ID of the source record (chatMessageId, planId, productId, etc.)
+    embedding: vector("embedding", { dimensions: 1536 }),
+    confidence: real("confidence").default(1.0).notNull(), // How confident we are in this info
+    isActive: boolean("is_active").default(true).notNull(),
+    expiresAt: timestamp("expires_at"), // Optional TTL for time-sensitive context
+    metadata: jsonb("metadata").$type<Record<string, unknown>>(),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  },
+  (table) => [
+    index("context_entries_org_idx").on(table.orgId),
+    index("context_entries_org_type_idx").on(table.orgId, table.type),
+    index("context_entries_org_source_idx").on(table.orgId, table.source),
+    index("context_entries_active_idx").on(table.orgId, table.isActive),
+  ]
+);
+
 // Type exports
 export type Organization = typeof organizations.$inferSelect;
 export type UserProfile = typeof userProfiles.$inferSelect;
@@ -461,3 +707,8 @@ export type KnowledgeDocument = typeof knowledgeDocuments.$inferSelect;
 export type KnowledgeChunk = typeof knowledgeChunks.$inferSelect;
 export type ApprovalRequest = typeof approvalRequests.$inferSelect;
 export type Idea = typeof ideas.$inferSelect;
+export type Product = typeof products.$inferSelect;
+export type MarketingGoal = typeof marketingGoals.$inferSelect;
+export type MarketingPlan = typeof marketingPlans.$inferSelect;
+export type Tactic = typeof tactics.$inferSelect;
+export type ContextEntry = typeof contextEntries.$inferSelect;

@@ -9,6 +9,10 @@ export interface AgentContext {
   preferences?: string;
   currentState?: string;
   recentPerformance?: string;
+  productsContext?: string;
+  goalsContext?: string;
+  plansContext?: string;
+  brainContext?: string;
 }
 
 export interface AgentResult {
@@ -21,9 +25,6 @@ export interface AgentResult {
 /**
  * Main orchestrator for Mo's agent loop.
  * Plan -> Execute -> Review -> Learn
- *
- * Sprint 1: Basic orchestration (route to model, build context)
- * Sprint 6: Full agent loop with learning
  */
 export async function orchestrate(
   userMessage: string,
@@ -41,7 +42,11 @@ export async function orchestrate(
     context.ragContext,
     context.learnings,
     context.preferences,
-    context.currentState
+    context.currentState,
+    context.productsContext,
+    context.goalsContext,
+    context.plansContext,
+    context.brainContext
   );
 
   return { systemPrompt, taskType, model };

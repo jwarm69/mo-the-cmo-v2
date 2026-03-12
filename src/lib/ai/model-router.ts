@@ -4,6 +4,10 @@ import { gpt4o, gpt4oMini } from "./providers/openai";
 export type TaskType =
   | "strategy"
   | "campaign_planning"
+  | "quarterly_planning"
+  | "monthly_planning"
+  | "launch_planning"
+  | "ideation"
   | "weekly_report"
   | "content_writing"
   | "email_sequence"
@@ -18,6 +22,10 @@ const TASK_MODEL_MAP: Record<TaskType, LanguageModel> = {
   // High-stakes strategic tasks -> GPT-4o
   strategy: gpt4o,
   campaign_planning: gpt4o,
+  quarterly_planning: gpt4o,
+  monthly_planning: gpt4o,
+  launch_planning: gpt4o,
+  ideation: gpt4o,
   weekly_report: gpt4o,
   analysis: gpt4o,
 
@@ -39,6 +47,40 @@ export function routeTask(taskType: TaskType): LanguageModel {
 
 export function inferTaskType(message: string): TaskType {
   const lower = message.toLowerCase();
+
+  // Strategic planning (check before generic "plan" to catch specific types)
+  if (
+    lower.includes("quarter") ||
+    lower.includes("q1") ||
+    lower.includes("q2") ||
+    lower.includes("q3") ||
+    lower.includes("q4")
+  ) {
+    return "quarterly_planning";
+  }
+  if (
+    lower.includes("launch") ||
+    lower.includes("go-to-market") ||
+    lower.includes("pre-launch")
+  ) {
+    return "launch_planning";
+  }
+  if (
+    lower.includes("monthly plan") ||
+    lower.includes("this month") ||
+    lower.includes("next month")
+  ) {
+    return "monthly_planning";
+  }
+  if (
+    lower.includes("idea") ||
+    lower.includes("brainstorm") ||
+    lower.includes("guerrilla") ||
+    lower.includes("creative marketing") ||
+    lower.includes("activation")
+  ) {
+    return "ideation";
+  }
 
   if (lower.includes("campaign")) return "campaign_planning";
   if (
@@ -91,7 +133,6 @@ export function inferTaskType(message: string): TaskType {
   if (
     lower.includes("strategy") ||
     lower.includes("plan") ||
-    lower.includes("go-to-market") ||
     lower.includes("positioning")
   ) {
     return "strategy";
