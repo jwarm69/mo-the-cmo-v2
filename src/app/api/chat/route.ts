@@ -6,6 +6,7 @@ import { assembleContext } from "@/lib/rag/context";
 import { orchestrate } from "@/lib/ai/orchestrator";
 import { checkUsageLimit, recordUsage } from "@/lib/usage/tracker";
 import { storeLearning } from "@/lib/memory/long-term";
+import { extractAndCaptureFromChat } from "@/lib/brain/chat-extractor";
 
 export const runtime = "nodejs";
 
@@ -76,6 +77,10 @@ export async function POST(req: Request) {
       }
     }
 
+    // Auto-capture context from chat — runs async, never blocks the response
+    // This is the company brain growing with every conversation
+    extractAndCaptureFromChat(org.id, lastText, memoryUserId).catch(() => {});
+
     const assembled = await assembleContext(org.id, lastText, memoryUserId);
     const { model, systemPrompt } = await orchestrate(lastText, {
       brandProfile: assembled.brandContext,
@@ -83,6 +88,10 @@ export async function POST(req: Request) {
       learnings: assembled.learnings,
       preferences: assembled.preferences,
       currentState: assembled.currentState,
+      productsContext: assembled.productsContext,
+      goalsContext: assembled.goalsContext,
+      plansContext: assembled.plansContext,
+      brainContext: assembled.brainContext,
     });
 
     const result = streamText({

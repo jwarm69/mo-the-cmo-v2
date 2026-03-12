@@ -2,7 +2,7 @@
  * Context assembly for prompts.
  */
 
-import { and, asc, desc, eq, gte, sql } from "drizzle-orm";
+import { and, asc, desc, eq, gte, inArray, sql } from "drizzle-orm";
 import { db } from "@/lib/db/client";
 import {
   agentLearnings,
@@ -14,10 +14,15 @@ import {
   ideas,
   knowledgeDocuments,
   organizations,
+  products,
+  marketingGoals,
+  marketingPlans,
+  tactics,
 } from "@/lib/db/schema";
 import { getRelevantLearnings } from "@/lib/memory/long-term";
 import { searchKnowledge } from "./search";
 import { normalizeBrandProfile } from "@/lib/brand/defaults";
+import { searchBrain, formatBrainContext } from "@/lib/brain/context-brain";
 
 const CONTEXT_CACHE_TTL_MS = 60_000;
 const CONTEXT_CACHE_MAX_ENTRIES = 200;
@@ -28,6 +33,10 @@ export interface AssembledContext {
   learnings: string;
   preferences: string;
   currentState: string;
+  productsContext: string;
+  goalsContext: string;
+  plansContext: string;
+  brainContext: string;
 }
 
 interface ContextFreshnessVector {
@@ -484,7 +493,16 @@ export async function assembleContext(
     hashtags: brandRecord?.hashtags ?? undefined,
   });
 
-  const [knowledgeResults, learnings, preferenceRows, stateDigest] = await Promise.all([
+  const [
+    knowledgeResults,
+    learnings,
+    preferenceRows,
+    stateDigest,
+    brainResults,
+    productRows,
+    goalRows,
+    activePlanRows,
+  ] = await Promise.all([
     searchKnowledge(orgId, query, 5, org?.slug),
     getRelevantLearnings(orgId, query, 5, userId),
     db
@@ -500,7 +518,111 @@ export async function assembleContext(
       .orderBy(desc(agentPreferences.updatedAt))
       .limit(8),
     buildStateDigest(orgId, brand),
+    searchBrain(orgId, query, 8),
+    db
+      .select({
+        name: products.name,
+        description: products.description,
+        status: products.status,
+        uniqueValue: products.uniqueValue,
+        outcomes: products.outcomes,
+        pricing: products.pricing,
+        launchDate: products.launchDate,
+      })
+      .from(products)
+      .where(
+        and(
+          eq(products.orgId, orgId),
+          inArray(products.status, ["active", "pre_launch", "developing"])
+        )
+      )
+      .orderBy(desc(products.updatedAt))
+      .limit(10),
+    db
+      .select({
+        title: marketingGoals.title,
+        timeframe: marketingGoals.timeframe,
+        status: marketingGoals.status,
+        targetMetric: marketingGoals.targetMetric,
+        targetValue: marketingGoals.targetValue,
+        currentValue: marketingGoals.currentValue,
+        endDate: marketingGoals.endDate,
+      })
+      .from(marketingGoals)
+      .where(
+        and(
+          eq(marketingGoals.orgId, orgId),
+          inArray(marketingGoals.status, [
+            "not_started",
+            "in_progress",
+            "on_track",
+            "at_risk",
+          ])
+        )
+      )
+      .orderBy(desc(marketingGoals.updatedAt))
+      .limit(10),
+    db
+      .select({
+        title: marketingPlans.title,
+        type: marketingPlans.type,
+        status: marketingPlans.status,
+        theme: marketingPlans.theme,
+        keyMessages: marketingPlans.keyMessages,
+        startDate: marketingPlans.startDate,
+        endDate: marketingPlans.endDate,
+      })
+      .from(marketingPlans)
+      .where(
+        and(
+          eq(marketingPlans.orgId, orgId),
+          inArray(marketingPlans.status, ["draft", "active"])
+        )
+      )
+      .orderBy(desc(marketingPlans.updatedAt))
+      .limit(5),
   ]);
+
+  // Format products context
+  const productsContext = productRows.length > 0
+    ? productRows
+        .map((p, i) => {
+          const parts = [`(${i + 1}) ${p.name} [${p.status}]`];
+          if (p.description) parts.push(`Description: ${p.description}`);
+          if (p.uniqueValue) parts.push(`Value: ${p.uniqueValue}`);
+          if (p.outcomes?.length) parts.push(`Outcomes: ${(p.outcomes as string[]).join(", ")}`);
+          if (p.pricing) {
+            const pr = p.pricing as { amount: number; currency: string; model: string };
+            parts.push(`Pricing: ${pr.amount} ${pr.currency} (${pr.model})`);
+          }
+          if (p.launchDate) parts.push(`Launch: ${formatDate(p.launchDate)}`);
+          return parts.join(" | ");
+        })
+        .join("\n")
+    : "";
+
+  // Format goals context
+  const goalsContext = goalRows.length > 0
+    ? goalRows
+        .map((g, i) => {
+          const progress = g.targetValue
+            ? ` | progress=${g.currentValue || 0}/${g.targetValue} ${g.targetMetric || ""}`
+            : "";
+          const deadline = g.endDate ? ` | deadline=${formatDate(g.endDate)}` : "";
+          return `(${i + 1}) ${g.title} [${g.timeframe}, ${g.status}]${progress}${deadline}`;
+        })
+        .join("\n")
+    : "";
+
+  // Format plans context
+  const plansContext = activePlanRows.length > 0
+    ? activePlanRows
+        .map((p, i) => {
+          const messages = (p.keyMessages as string[] | null)?.join("; ") || "";
+          return `(${i + 1}) ${p.title} [${p.type}, ${p.status}]${p.theme ? ` | theme="${p.theme}"` : ""}${messages ? ` | messages: ${messages}` : ""} | ${formatDate(p.startDate)} to ${formatDate(p.endDate)}`;
+        })
+        .join("\n")
+    : "";
 
   const assembled: AssembledContext = {
     brandContext: formatBrandContext(brand),
@@ -527,6 +649,10 @@ export async function assembleContext(
       "",
       stateDigest,
     ].join("\n"),
+    productsContext,
+    goalsContext,
+    plansContext,
+    brainContext: formatBrainContext(brainResults),
   };
 
   setContextCache(cacheKey, {
