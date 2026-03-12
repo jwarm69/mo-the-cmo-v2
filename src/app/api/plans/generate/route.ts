@@ -196,7 +196,7 @@ export async function POST(req: Request) {
   const result = await generateText({
     model: gpt4o,
     prompt,
-    maxTokens: 4000,
+    maxOutputTokens: 4000,
   });
 
   // Record usage
@@ -206,8 +206,8 @@ export async function POST(req: Request) {
       orgId: org.id,
       model: "gpt-4o",
       route: "/api/plans/generate",
-      inputTokens: result.usage.promptTokens ?? 0,
-      outputTokens: result.usage.completionTokens ?? 0,
+      inputTokens: result.usage.inputTokens ?? 0,
+      outputTokens: result.usage.outputTokens ?? 0,
     }).catch(() => {});
   }
 

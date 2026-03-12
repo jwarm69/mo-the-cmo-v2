@@ -305,20 +305,21 @@ function renderPlanDetails(
     tactics?: { channel: string; channelCategory: string; title: string; description: string; effort: string }[];
   }[];
 
+  const strategicPriorities = details.strategicPriorities as string[] | undefined;
   const keyMessages = details.keyMessages as string[] | undefined;
   const successMetrics = details.successMetrics as string[] | undefined;
 
   return (
     <div className="space-y-4">
       {/* Strategic Priorities */}
-      {details.strategicPriorities && (
+      {strategicPriorities && strategicPriorities.length > 0 && (
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-base">Strategic Priorities</CardTitle>
           </CardHeader>
           <CardContent>
             <ul className="space-y-1">
-              {(details.strategicPriorities as string[]).map((p, i) => (
+              {strategicPriorities.map((p: string, i: number) => (
                 <li key={i} className="text-sm flex items-start gap-2">
                   <span className="text-primary font-bold">{i + 1}.</span> {p}
                 </li>
