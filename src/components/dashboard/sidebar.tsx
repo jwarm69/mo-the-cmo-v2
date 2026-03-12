@@ -16,6 +16,9 @@ import {
   Check,
   ChevronsUpDown,
   Plus,
+  ShoppingBag,
+  Target,
+  Map,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -31,6 +34,9 @@ import { useOrg } from "./org-context";
 
 const navItems = [
   { href: "/", label: "Home", icon: LayoutDashboard },
+  { href: "/products", label: "Products", icon: ShoppingBag },
+  { href: "/goals", label: "Goals", icon: Target },
+  { href: "/strategy", label: "Strategy", icon: Map },
   { href: "/plan", label: "Plan", icon: CalendarClock },
   { href: "/content", label: "Content", icon: FileText },
   { href: "/campaigns", label: "Campaigns", icon: Megaphone },

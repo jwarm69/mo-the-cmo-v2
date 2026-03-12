@@ -6,7 +6,8 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { DEFAULT_BRAND_PROFILE } from "@/lib/brand/defaults";
-import { ArrowRight, CheckCircle2, Sparkles, Zap } from "lucide-react";
+import { ArrowRight, CheckCircle2, Sparkles, Zap, ShoppingBag, Target, Map, Lightbulb, Send } from "lucide-react";
+import { Input } from "@/components/ui/input";
 
 interface DashboardStats {
   orgName: string;
@@ -49,6 +50,8 @@ export default function DashboardPage() {
   const [needsSetup, setNeedsSetup] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [workingItemId, setWorkingItemId] = useState<string | null>(null);
+  const [ideaText, setIdeaText] = useState("");
+  const [ideaSaving, setIdeaSaving] = useState(false);
 
   async function load() {
     try {
@@ -165,6 +168,89 @@ export default function DashboardPage() {
             <p className="text-xs text-muted-foreground">of ${limit} monthly budget</p>
           </CardContent>
         </Card>
+      </div>
+
+      {/* Idea Capture */}
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-sm flex items-center gap-2">
+            <Lightbulb className="h-4 w-4" />
+            Quick Idea Capture
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <form
+            className="flex gap-2"
+            onSubmit={async (e) => {
+              e.preventDefault();
+              if (!ideaText.trim()) return;
+              setIdeaSaving(true);
+              try {
+                await fetch("/api/ideas", {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({ text: ideaText }),
+                });
+                setIdeaText("");
+              } finally {
+                setIdeaSaving(false);
+              }
+            }}
+          >
+            <Input
+              placeholder="Capture a marketing idea... (Mo will weave it into future plans)"
+              value={ideaText}
+              onChange={(e) => setIdeaText(e.target.value)}
+              className="flex-1"
+            />
+            <Button type="submit" size="sm" disabled={ideaSaving || !ideaText.trim()}>
+              <Send className="h-4 w-4" />
+            </Button>
+          </form>
+        </CardContent>
+      </Card>
+
+      {/* Quick Access to CMO Tools */}
+      <div className="grid gap-4 md:grid-cols-3">
+        <Link href="/products">
+          <Card className="hover:border-primary/50 transition-colors cursor-pointer">
+            <CardContent className="flex items-center gap-3 p-4">
+              <div className="rounded-lg bg-green-500/10 p-2">
+                <ShoppingBag className="h-5 w-5 text-green-700" />
+              </div>
+              <div>
+                <p className="text-sm font-medium">Products & Offers</p>
+                <p className="text-xs text-muted-foreground">What you sell</p>
+              </div>
+            </CardContent>
+          </Card>
+        </Link>
+        <Link href="/goals">
+          <Card className="hover:border-primary/50 transition-colors cursor-pointer">
+            <CardContent className="flex items-center gap-3 p-4">
+              <div className="rounded-lg bg-blue-500/10 p-2">
+                <Target className="h-5 w-5 text-blue-700" />
+              </div>
+              <div>
+                <p className="text-sm font-medium">Marketing Goals</p>
+                <p className="text-xs text-muted-foreground">What you&apos;re aiming for</p>
+              </div>
+            </CardContent>
+          </Card>
+        </Link>
+        <Link href="/strategy">
+          <Card className="hover:border-primary/50 transition-colors cursor-pointer">
+            <CardContent className="flex items-center gap-3 p-4">
+              <div className="rounded-lg bg-purple-500/10 p-2">
+                <Map className="h-5 w-5 text-purple-700" />
+              </div>
+              <div>
+                <p className="text-sm font-medium">Strategic Planning</p>
+                <p className="text-xs text-muted-foreground">Quarter, month, and launch plans</p>
+              </div>
+            </CardContent>
+          </Card>
+        </Link>
       </div>
 
       <Card>
