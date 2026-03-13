@@ -8,6 +8,13 @@
       "when": 1771472028165,
       "tag": "0000_silent_sprite",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1773423013245,
+      "tag": "0001_rich_mindworm",
+      "breakpoints": true
     }
   ]
 }

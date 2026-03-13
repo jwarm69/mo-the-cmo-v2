@@ -74,7 +74,7 @@ export async function extractAndCaptureFromChat(
       model: gpt4oMini,
       system: EXTRACTION_PROMPT,
       prompt: `User message:\n${userMessage}`,
-      maxTokens: 500,
+      maxOutputTokens: 500,
     });
 
     let extracted: ExtractedContext[];
