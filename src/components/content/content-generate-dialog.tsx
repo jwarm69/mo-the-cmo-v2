@@ -21,6 +21,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Plus, Loader2 } from "lucide-react";
+import { TemplatePicker } from "./template-picker";
 import type { Platform } from "@/lib/types";
 
 const PLATFORMS: { value: Platform; label: string }[] = [
@@ -51,6 +52,7 @@ export function ContentGenerateDialog({
   const [platform, setPlatform] = useState<Platform>(defaultPlatform || "tiktok");
   const [topic, setTopic] = useState(defaultTopic || "");
   const [pillar, setPillar] = useState("");
+  const [templateId, setTemplateId] = useState("");
   const [loading, setLoading] = useState(false);
 
   const handleGenerate = async () => {
@@ -60,12 +62,19 @@ export function ContentGenerateDialog({
       const res = await fetch("/api/content/generate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ platform, topic, pillar: pillar || undefined, useAgentLoop: true }),
+        body: JSON.stringify({
+          platform,
+          topic,
+          pillar: pillar || undefined,
+          templateId: templateId && templateId !== "none" ? templateId : undefined,
+          useAgentLoop: true,
+        }),
       });
       if (res.ok) {
         setOpen(false);
         setTopic("");
         setPillar("");
+        setTemplateId("");
         onGenerated?.();
       }
     } finally {
@@ -108,6 +117,11 @@ export function ContentGenerateDialog({
               </SelectContent>
             </Select>
           </div>
+          <TemplatePicker
+            value={templateId}
+            onSelect={(id) => setTemplateId(id ?? "")}
+            platform={platform}
+          />
           <div className="space-y-2">
             <Label>Topic</Label>
             <Input

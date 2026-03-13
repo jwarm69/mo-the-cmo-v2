@@ -380,6 +380,65 @@ Respond in JSON (no markdown code fences):
 }
 
 /**
+ * Weekly Marketing Brief — summarize last week and plan this week.
+ */
+export function buildWeeklyBriefPrompt(opts: {
+  brandContext: string;
+  currentState: string;
+  learnings: string;
+  goalsContext: string;
+  plansContext: string;
+  productsContext: string;
+  brainContext: string;
+}): string {
+  return `You are Mo, the AI Chief Marketing Officer. Generate a weekly marketing brief.
+
+## Brand Context
+${opts.brandContext}
+
+## Current State
+${opts.currentState}
+
+## What We've Learned
+${opts.learnings || "No learnings yet."}
+
+## Active Goals
+${opts.goalsContext || "No goals set."}
+
+## Active Plans
+${opts.plansContext || "No plans active."}
+
+## Products
+${opts.productsContext || "No products defined."}
+
+## Company Brain
+${opts.brainContext || "No company context."}
+
+## Your Task
+Create a weekly marketing brief with:
+1. **Last Week Summary** — What happened, what was published, what performed well
+2. **Pillar Health** — Are content pillars balanced? Any gaps?
+3. **Goal Progress** — How are active goals tracking?
+4. **This Week Priorities** — 5-7 specific, actionable priorities for this week
+5. **Key Insight** — One strategic insight or opportunity to focus on
+
+Respond in JSON (no markdown fences):
+{
+  "summary": "2-3 sentence summary of last week",
+  "pillarHealth": [
+    { "pillar": "string", "status": "healthy|needs_attention|gap", "note": "string" }
+  ],
+  "goalProgress": [
+    { "goal": "string", "status": "on_track|at_risk|behind", "note": "string" }
+  ],
+  "priorities": [
+    "Specific actionable priority for this week"
+  ],
+  "keyInsight": "One strategic insight or opportunity"
+}`;
+}
+
+/**
  * Multi-channel ideation prompt — creative tactics beyond social posts.
  */
 export function buildIdeationPrompt(opts: {

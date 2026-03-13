@@ -37,8 +37,10 @@ export interface ContentItem {
   status: ContentStatus;
   scheduledDate?: string;
   scheduledTime?: string;
+  publishedAt?: Date | null;
   performanceScore?: number | null;
   agentLoopMetadata?: Record<string, unknown> | null;
+  sourceContentId?: string | null;
   createdAt: Date;
 }
 

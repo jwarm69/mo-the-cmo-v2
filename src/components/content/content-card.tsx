@@ -4,11 +4,13 @@ import { useState } from "react";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Check, Trash2, Clock, Eye, Pencil, Repeat2 } from "lucide-react";
+import { Check, Trash2, Clock, Eye, Pencil, Repeat2, BookmarkPlus, BarChart3, GitBranch } from "lucide-react";
+import { toast } from "sonner";
 import type { ContentItem } from "@/lib/types";
 import { ContentEditDialog } from "./content-edit-dialog";
 import { ContentPreviewModal } from "./content-preview-modal";
 import { RepurposeDialog } from "./repurpose-dialog";
+import { PerformanceLogger } from "./performance-logger";
 
 const PLATFORM_COLORS: Record<string, string> = {
   tiktok: "bg-pink-500/10 text-pink-700 border-pink-200",
@@ -41,6 +43,31 @@ export function ContentCard({
   const [editOpen, setEditOpen] = useState(false);
   const [previewOpen, setPreviewOpen] = useState(false);
   const [repurposeOpen, setRepurposeOpen] = useState(false);
+  const [perfLogOpen, setPerfLogOpen] = useState(false);
+
+  const isVariant = !!(item.agentLoopMetadata as Record<string, unknown> | null)?.variantIndex !== undefined
+    && (item.agentLoopMetadata as Record<string, unknown> | null)?.variantIndex !== undefined;
+
+  const handleSaveAsTemplate = async () => {
+    try {
+      const res = await fetch("/api/templates", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          extractFromContent: `Hook: ${item.hook}\n\nBody: ${item.body}\n\nCTA: ${item.cta}`,
+          platform: item.platform,
+          pillar: item.pillar,
+        }),
+      });
+      if (res.ok) {
+        toast.success("Template saved");
+      } else {
+        toast.error("Failed to save template");
+      }
+    } catch {
+      toast.error("Failed to save template");
+    }
+  };
 
   return (
     <>
@@ -56,9 +83,17 @@ export function ContentCard({
               </Badge>
               <Badge variant="secondary">{item.pillar}</Badge>
             </div>
-            <Badge variant={item.status === "draft" ? "outline" : "default"}>
-              {STATUS_LABELS[item.status] || item.status}
-            </Badge>
+            <div className="flex items-center gap-1">
+              {isVariant && (
+                <Badge variant="outline" className="text-xs">
+                  <GitBranch className="mr-1 h-3 w-3" />
+                  Variant
+                </Badge>
+              )}
+              <Badge variant={item.status === "draft" ? "outline" : "default"}>
+                {STATUS_LABELS[item.status] || item.status}
+              </Badge>
+            </div>
           </div>
         </CardHeader>
         <CardContent className="space-y-3">
@@ -132,6 +167,24 @@ export function ContentCard({
               <Repeat2 className="mr-1 h-3 w-3" />
               Repurpose
             </Button>
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={handleSaveAsTemplate}
+            >
+              <BookmarkPlus className="mr-1 h-3 w-3" />
+              Template
+            </Button>
+            {item.status === "published" && (
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={() => setPerfLogOpen(true)}
+              >
+                <BarChart3 className="mr-1 h-3 w-3" />
+                Log Results
+              </Button>
+            )}
             {onDelete && (
               <Button
                 size="sm"
@@ -162,6 +215,15 @@ export function ContentCard({
         open={repurposeOpen}
         onOpenChange={setRepurposeOpen}
         onRepurposed={onRefresh}
+      />
+      <PerformanceLogger
+        contentId={item.id}
+        platform={item.platform}
+        open={perfLogOpen}
+        onOpenChange={(open) => {
+          setPerfLogOpen(open);
+          if (!open) onRefresh?.();
+        }}
       />
     </>
   );

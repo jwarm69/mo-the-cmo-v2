@@ -51,8 +51,10 @@ export function dbRowToContentItem(row: ContentRow): UIContentItem {
     status: row.status as ContentStatus,
     scheduledDate,
     scheduledTime,
+    publishedAt: row.publishedAt,
     performanceScore: row.performanceScore,
     agentLoopMetadata: (meta.agentLoop as Record<string, unknown>) ?? null,
+    sourceContentId: row.sourceContentId,
     createdAt: row.createdAt,
   };
 }

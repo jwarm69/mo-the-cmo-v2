@@ -690,6 +690,82 @@ export const contextEntries = pgTable(
   ]
 );
 
+// ─── Content Templates ──────────────────────────────────────────────
+// Reusable structural patterns for content generation.
+
+export const contentTemplates = pgTable(
+  "content_templates",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    orgId: uuid("org_id")
+      .references(() => organizations.id)
+      .notNull(),
+    name: text("name").notNull(),
+    platform: platformEnum("platform"),
+    structure: jsonb("structure").$type<{
+      hook_type: string;
+      body_format: string;
+      cta_pattern: string;
+      example: string;
+    }>(),
+    pillar: text("pillar"),
+    usageCount: integer("usage_count").default(0).notNull(),
+    lastUsedAt: timestamp("last_used_at"),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+  },
+  (table) => [
+    index("content_templates_org_idx").on(table.orgId),
+  ]
+);
+
+// ─── Competitor Profiles ────────────────────────────────────────────
+// Track competitor online presence for monitoring and analysis.
+
+export const competitorProfiles = pgTable(
+  "competitor_profiles",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    orgId: uuid("org_id")
+      .references(() => organizations.id)
+      .notNull(),
+    name: text("name").notNull(),
+    urls: jsonb("urls").$type<string[]>(),
+    lastScrapedAt: timestamp("last_scraped_at"),
+    metadata: jsonb("metadata").$type<Record<string, unknown>>(),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  },
+  (table) => [
+    index("competitor_profiles_org_idx").on(table.orgId),
+  ]
+);
+
+// ─── Competitor Content ─────────────────────────────────────────────
+// Scraped and analyzed competitor content.
+
+export const competitorContent = pgTable(
+  "competitor_content",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    competitorId: uuid("competitor_id")
+      .references(() => competitorProfiles.id)
+      .notNull(),
+    orgId: uuid("org_id")
+      .references(() => organizations.id)
+      .notNull(),
+    url: text("url"),
+    content: text("content").notNull(),
+    platform: text("platform"),
+    publishedAt: timestamp("published_at"),
+    analysis: jsonb("analysis").$type<Record<string, unknown>>(),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+  },
+  (table) => [
+    index("competitor_content_competitor_idx").on(table.competitorId),
+    index("competitor_content_org_idx").on(table.orgId),
+  ]
+);
+
 // Type exports
 export type Organization = typeof organizations.$inferSelect;
 export type UserProfile = typeof userProfiles.$inferSelect;
@@ -712,3 +788,6 @@ export type MarketingGoal = typeof marketingGoals.$inferSelect;
 export type MarketingPlan = typeof marketingPlans.$inferSelect;
 export type Tactic = typeof tactics.$inferSelect;
 export type ContextEntry = typeof contextEntries.$inferSelect;
+export type ContentTemplate = typeof contentTemplates.$inferSelect;
+export type CompetitorProfile = typeof competitorProfiles.$inferSelect;
+export type CompetitorContent = typeof competitorContent.$inferSelect;

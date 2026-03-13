@@ -1,10 +1,13 @@
 import { NextResponse } from "next/server";
+import { eq } from "drizzle-orm";
 import { requireAuth } from "@/lib/api/session";
 import { resolveOrgFromRequest } from "@/lib/api/org";
-import { updateContent } from "@/lib/db/content";
+import { updateContent, getContentById } from "@/lib/db/content";
+import { db } from "@/lib/db/client";
+import { contentItems } from "@/lib/db/schema";
 import type { ContentStatus } from "@/lib/types";
 
-type ContentAction = "approve" | "schedule" | "publish" | "archive";
+type ContentAction = "approve" | "schedule" | "publish" | "archive" | "snooze";
 
 function nextDayAtNoon(): { scheduledDate: string; scheduledTime: string } {
   const date = new Date();
@@ -47,6 +50,11 @@ export async function POST(
       break;
     case "publish":
       status = "published";
+      // Set publishedAt on the DB row directly
+      await db
+        .update(contentItems)
+        .set({ publishedAt: new Date(), updatedAt: new Date() })
+        .where(eq(contentItems.id, id));
       break;
     case "archive":
       status = "archived";
@@ -63,6 +71,22 @@ export async function POST(
         updates.scheduledDate = fallback.scheduledDate;
         updates.scheduledTime = fallback.scheduledTime;
       }
+      break;
+    }
+    case "snooze": {
+      // Bump scheduledAt by +1 day
+      const existing = await getContentById(id, org.id);
+      if (existing?.scheduledDate) {
+        const current = new Date(`${existing.scheduledDate}T${existing.scheduledTime || "12:00"}:00Z`);
+        current.setDate(current.getDate() + 1);
+        updates.scheduledDate = current.toISOString().split("T")[0];
+        updates.scheduledTime = existing.scheduledTime || "12:00";
+      } else {
+        const fallback = nextDayAtNoon();
+        updates.scheduledDate = fallback.scheduledDate;
+        updates.scheduledTime = fallback.scheduledTime;
+      }
+      status = existing?.status === "approved" ? "scheduled" : (existing?.status as ContentStatus) || "scheduled";
       break;
     }
     default:

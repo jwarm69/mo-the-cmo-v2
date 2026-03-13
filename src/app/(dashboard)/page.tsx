@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { DEFAULT_BRAND_PROFILE } from "@/lib/brand/defaults";
 import { ArrowRight, CheckCircle2, Sparkles, Zap } from "lucide-react";
+import { WeeklyBrief } from "@/components/dashboard/weekly-brief";
 
 interface DashboardStats {
   orgName: string;
@@ -136,6 +137,8 @@ export default function DashboardPage() {
           </CardHeader>
         </Card>
       )}
+
+      <WeeklyBrief />
 
       <div className="grid gap-4 md:grid-cols-3">
         <Card>

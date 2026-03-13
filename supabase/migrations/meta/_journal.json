@@ -15,6 +15,13 @@
       "when": 1773423013245,
       "tag": "0001_rich_mindworm",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1773427061442,
+      "tag": "0002_stale_moira_mactaggert",
+      "breakpoints": true
     }
   ]
 }

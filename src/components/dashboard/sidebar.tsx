@@ -16,6 +16,8 @@ import {
   Check,
   ChevronsUpDown,
   Plus,
+  ListOrdered,
+  Eye,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -33,8 +35,10 @@ const navItems = [
   { href: "/", label: "Home", icon: LayoutDashboard },
   { href: "/plan", label: "Plan", icon: CalendarClock },
   { href: "/content", label: "Content", icon: FileText },
+  { href: "/queue", label: "Queue", icon: ListOrdered },
   { href: "/campaigns", label: "Campaigns", icon: Megaphone },
   { href: "/chat", label: "Chat", icon: MessageSquare },
+  { href: "/competitors", label: "Competitors", icon: Eye },
   { href: "/settings", label: "Settings", icon: Settings },
 ];
 

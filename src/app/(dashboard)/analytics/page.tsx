@@ -9,7 +9,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, BarChart3, PieChart, Activity, Brain, BookOpen } from "lucide-react";
+import { Loader2, BarChart3, PieChart, Activity, Brain, BookOpen, TrendingUp } from "lucide-react";
 import {
   BarChart,
   Bar,
@@ -23,6 +23,25 @@ import {
   Legend,
 } from "recharts";
 
+interface TopPerforming {
+  contentId: string | null;
+  platform: string;
+  likes: number | null;
+  comments: number | null;
+  shares: number | null;
+  reach: number | null;
+  engagementRate: number | null;
+  contentTitle: string | null;
+}
+
+interface EngagementTrend {
+  week: string;
+  avgEngagement: number | null;
+  totalLikes: number;
+  totalComments: number;
+  count: number;
+}
+
 interface AnalyticsData {
   weeklyContent: { week: string; platform: string; count: number }[];
   statusCounts: { status: string; count: number }[];
@@ -32,6 +51,8 @@ interface AnalyticsData {
   learnings: number;
   knowledgeDocs: number;
   weeklyUsage: { week: string; totalCost: number; totalTokens: number }[];
+  topPerforming: TopPerforming[];
+  engagementTrends: EngagementTrend[];
 }
 
 const COLORS = [
@@ -257,6 +278,81 @@ export default function AnalyticsPage() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Performance section */}
+      {(data.topPerforming.length > 0 || data.engagementTrends.length > 0) && (
+        <div className="grid gap-4 md:grid-cols-2">
+          {/* Top performing content */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Top Performing Content</CardTitle>
+              <CardDescription>Best engagement rates</CardDescription>
+            </CardHeader>
+            <CardContent>
+              {data.topPerforming.length > 0 ? (
+                <div className="space-y-3">
+                  {data.topPerforming.map((item, i) => (
+                    <div key={i} className="flex items-center justify-between text-sm">
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate font-medium">
+                          {item.contentTitle || "Untitled"}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          {item.platform} · {item.likes ?? 0} likes · {item.comments ?? 0} comments
+                        </p>
+                      </div>
+                      {item.engagementRate != null && (
+                        <Badge variant="secondary" className="text-xs ml-2">
+                          <TrendingUp className="mr-1 h-3 w-3" />
+                          {(item.engagementRate * 100).toFixed(1)}%
+                        </Badge>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-sm text-muted-foreground text-center py-8">
+                  No performance data yet
+                </p>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Engagement trends */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Engagement Trends</CardTitle>
+              <CardDescription>Weekly engagement over time</CardDescription>
+            </CardHeader>
+            <CardContent>
+              {data.engagementTrends.length > 0 ? (
+                <ResponsiveContainer width="100%" height={300}>
+                  <BarChart
+                    data={data.engagementTrends.map((w) => ({
+                      week: new Date(w.week).toLocaleDateString("en-US", {
+                        month: "short",
+                        day: "numeric",
+                      }),
+                      likes: Number(w.totalLikes || 0),
+                      comments: Number(w.totalComments || 0),
+                    }))}
+                  >
+                    <XAxis dataKey="week" tick={{ fontSize: 12 }} />
+                    <YAxis allowDecimals={false} />
+                    <Tooltip />
+                    <Bar dataKey="likes" fill="#ec4899" name="Likes" stackId="a" />
+                    <Bar dataKey="comments" fill="#8b5cf6" name="Comments" stackId="a" />
+                  </BarChart>
+                </ResponsiveContainer>
+              ) : (
+                <p className="text-sm text-muted-foreground text-center py-8">
+                  No engagement data yet
+                </p>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+      )}
 
       <div className="grid gap-4 md:grid-cols-2">
         {/* Pillar balance */}

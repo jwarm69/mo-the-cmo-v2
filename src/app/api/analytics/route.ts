@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { and, count, eq, gte, sql } from "drizzle-orm";
+import { and, count, desc, eq, gte, sql } from "drizzle-orm";
 import { requireAuth } from "@/lib/api/session";
 import { resolveOrgFromRequest } from "@/lib/api/org";
 import { db } from "@/lib/db/client";
@@ -9,6 +9,7 @@ import {
   knowledgeDocuments,
   usageTracking,
   brandProfiles,
+  performanceMetrics,
 } from "@/lib/db/schema";
 import { normalizeBrandProfile } from "@/lib/brand/defaults";
 
@@ -106,6 +107,43 @@ export async function GET(req: Request) {
       .limit(1),
   ]);
 
+  // Top performing content
+  const topPerforming = await db
+    .select({
+      contentId: performanceMetrics.contentItemId,
+      platform: performanceMetrics.platform,
+      likes: performanceMetrics.likes,
+      comments: performanceMetrics.comments,
+      shares: performanceMetrics.shares,
+      reach: performanceMetrics.reach,
+      engagementRate: performanceMetrics.engagementRate,
+      contentTitle: contentItems.title,
+    })
+    .from(performanceMetrics)
+    .leftJoin(contentItems, eq(performanceMetrics.contentItemId, contentItems.id))
+    .where(eq(performanceMetrics.orgId, org.id))
+    .orderBy(desc(performanceMetrics.engagementRate))
+    .limit(5);
+
+  // Engagement trends (last 8 weeks)
+  const engagementTrends = await db
+    .select({
+      week: sql<string>`to_char(date_trunc('week', ${performanceMetrics.createdAt}), 'YYYY-MM-DD')`,
+      avgEngagement: sql<number>`avg(${performanceMetrics.engagementRate})`,
+      totalLikes: sql<number>`sum(${performanceMetrics.likes})`,
+      totalComments: sql<number>`sum(${performanceMetrics.comments})`,
+      count: count(),
+    })
+    .from(performanceMetrics)
+    .where(
+      and(
+        eq(performanceMetrics.orgId, org.id),
+        gte(performanceMetrics.createdAt, eightWeeksAgo)
+      )
+    )
+    .groupBy(sql`date_trunc('week', ${performanceMetrics.createdAt})`)
+    .orderBy(sql`date_trunc('week', ${performanceMetrics.createdAt})`);
+
   // Compute pillar distribution from content metadata
   const allContent = await db
     .select({ metadata: contentItems.metadata })
@@ -140,5 +178,7 @@ export async function GET(req: Request) {
     learnings: learningCount[0]?.value ?? 0,
     knowledgeDocs: docCount[0]?.value ?? 0,
     weeklyUsage,
+    topPerforming,
+    engagementTrends,
   });
 }

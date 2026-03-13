@@ -10,6 +10,10 @@ import {
   describeDiff,
 } from "@/lib/db/content";
 import { storeLearning } from "@/lib/memory/long-term";
+import { db } from "@/lib/db/client";
+import { contentItems as contentItemsTable } from "@/lib/db/schema";
+import { and, desc, eq, inArray, asc } from "drizzle-orm";
+import { dbRowToContentItem } from "@/lib/db/content";
 import type { ContentStatus, Platform } from "@/lib/types";
 
 export async function GET(req: Request) {
@@ -20,8 +24,30 @@ export async function GET(req: Request) {
   const org = await resolveOrgFromRequest(req, undefined, user.orgId);
   const { searchParams } = new URL(req.url);
   const platform = searchParams.get("platform") as Platform | null;
-  const status = searchParams.get("status") as ContentStatus | null;
+  const statusParam = searchParams.get("status");
+  const orderBy = searchParams.get("orderBy");
 
+  // Support comma-separated status values
+  if (statusParam && statusParam.includes(",")) {
+    const statuses = statusParam.split(",") as ContentStatus[];
+    const conditions = [eq(contentItemsTable.orgId, org.id)];
+    conditions.push(inArray(contentItemsTable.status, statuses));
+    if (platform) conditions.push(eq(contentItemsTable.platform, platform));
+
+    const rows = await db
+      .select()
+      .from(contentItemsTable)
+      .where(and(...conditions))
+      .orderBy(
+        orderBy === "scheduledAt"
+          ? asc(contentItemsTable.scheduledAt)
+          : desc(contentItemsTable.createdAt)
+      );
+
+    return NextResponse.json(rows.map(dbRowToContentItem));
+  }
+
+  const status = statusParam as ContentStatus | null;
   const items = await listContent(org.id, {
     platform: platform || undefined,
     status: status || undefined,

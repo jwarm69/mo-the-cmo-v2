@@ -63,6 +63,13 @@ export function ChatInterface() {
       .join("");
   };
 
+  // Extract tool invocations from message parts
+  const getToolInvocations = (
+    parts: Array<{ type: string; toolInvocation?: { toolName: string; state: string; result?: unknown } }>
+  ) => {
+    return parts.filter((p) => p.type === "tool-invocation" && p.toolInvocation);
+  };
+
   return (
     <div className="flex h-full flex-col">
       {/* Messages Area */}
@@ -153,6 +160,34 @@ export function ChatInterface() {
                       message.parts as Array<{ type: string; text?: string }>
                     )}
                   </div>
+                  {/* Render tool results inline */}
+                  {getToolInvocations(
+                    message.parts as Array<{ type: string; toolInvocation?: { toolName: string; state: string; result?: unknown } }>
+                  ).map((p, i) => {
+                    const inv = p.toolInvocation!;
+                    if (inv.state !== "result" || !inv.result) return null;
+                    const result = inv.result as Record<string, unknown>;
+                    return (
+                      <div
+                        key={i}
+                        className="mt-2 rounded border bg-card p-2 text-xs"
+                      >
+                        <div className="flex items-center gap-1 text-muted-foreground mb-1">
+                          <span className="font-mono">{inv.toolName}</span>
+                          {Boolean(result.success) && (
+                            <Badge variant="secondary" className="text-[10px]">
+                              Done
+                            </Badge>
+                          )}
+                        </div>
+                        {result.message ? (
+                          <p className="text-foreground">
+                            {String(result.message)}
+                          </p>
+                        ) : null}
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
             </div>

@@ -7,6 +7,7 @@ import { orchestrate } from "@/lib/ai/orchestrator";
 import { checkUsageLimit, recordUsage } from "@/lib/usage/tracker";
 import { storeLearning } from "@/lib/memory/long-term";
 import { extractAndCaptureFromChat } from "@/lib/brain/chat-extractor";
+import { createMoTools } from "@/lib/ai/tools";
 
 export const runtime = "nodejs";
 
@@ -94,10 +95,13 @@ export async function POST(req: Request) {
       brainContext: assembled.brainContext,
     });
 
+    const tools = createMoTools(org.id, org.slug);
+
     const result = streamText({
       model,
       system: systemPrompt,
       messages: await convertToModelMessages(messages),
+      tools,
       onFinish: async ({ usage, response }) => {
         if (!user.isApiKeyUser && usage) {
           await recordUsage({
