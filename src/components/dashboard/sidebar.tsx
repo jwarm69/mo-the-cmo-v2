@@ -21,6 +21,7 @@ import {
   Radio,
   Users,
   Briefcase,
+  Brain,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -37,6 +38,7 @@ import { useOrg } from "./org-context";
 const navItems = [
   { href: "/", label: "Home", icon: LayoutDashboard, group: "overview" },
   // Strategy
+  { href: "/brain", label: "Brain", icon: Brain, group: "strategy" },
   { href: "/channels", label: "Channels", icon: Radio, group: "strategy" },
   { href: "/positioning", label: "Positioning", icon: Users, group: "strategy" },
   { href: "/campaigns", label: "Campaigns", icon: Megaphone, group: "strategy" },

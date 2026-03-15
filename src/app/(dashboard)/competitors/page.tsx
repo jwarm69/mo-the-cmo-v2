@@ -35,10 +35,19 @@ interface AnalysisData {
   [key: string]: unknown;
 }
 
+interface SocialProfiles {
+  instagram?: string;
+  tiktok?: string;
+  twitter?: string;
+  facebook?: string;
+  linkedin?: string;
+}
+
 interface CompetitorProfile {
   id: string;
   name: string;
   urls: string[];
+  socialProfiles: SocialProfiles | null;
   lastScrapedAt: string | null;
   contentCount: number;
   latestAnalysis: AnalysisData | null;
@@ -46,11 +55,20 @@ interface CompetitorProfile {
   createdAt: string;
 }
 
+const SOCIAL_PLATFORMS = [
+  { key: "instagram" as const, label: "Instagram", placeholder: "https://instagram.com/username", pattern: "instagram.com" },
+  { key: "tiktok" as const, label: "TikTok", placeholder: "https://tiktok.com/@username", pattern: "tiktok.com" },
+  { key: "twitter" as const, label: "Twitter/X", placeholder: "https://twitter.com/username or https://x.com/username", pattern: "(twitter|x).com" },
+  { key: "facebook" as const, label: "Facebook", placeholder: "https://facebook.com/page", pattern: "facebook.com" },
+  { key: "linkedin" as const, label: "LinkedIn", placeholder: "https://linkedin.com/company/name", pattern: "linkedin.com" },
+] as const;
+
 export default function CompetitorsPage() {
   const [competitors, setCompetitors] = useState<CompetitorProfile[]>([]);
   const [loading, setLoading] = useState(true);
   const [name, setName] = useState("");
   const [urlInput, setUrlInput] = useState("");
+  const [socialInputs, setSocialInputs] = useState<SocialProfiles>({});
   const [saving, setSaving] = useState(false);
   const [analyzingId, setAnalyzingId] = useState<string | null>(null);
   const [expandedId, setExpandedId] = useState<string | null>(null);
@@ -80,16 +98,26 @@ export default function CompetitorsPage() {
         .map((u) => u.trim())
         .filter((u) => u.length > 0);
 
+      // Clean social profiles — only include non-empty values
+      const socialProfiles: SocialProfiles = {};
+      for (const platform of SOCIAL_PLATFORMS) {
+        const val = socialInputs[platform.key]?.trim();
+        if (val) {
+          socialProfiles[platform.key] = val;
+        }
+      }
+
       const res = await fetch("/api/competitors", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: trimmedName, urls }),
+        body: JSON.stringify({ name: trimmedName, urls, socialProfiles }),
       });
 
       if (res.ok) {
         toast.success("Competitor added");
         setName("");
         setUrlInput("");
+        setSocialInputs({});
         setShowAddForm(false);
         load();
       } else {
@@ -126,7 +154,7 @@ export default function CompetitorsPage() {
       });
       const data = await res.json();
       if (res.ok) {
-        toast.success(`Analyzed ${data.analyzed} page(s)`);
+        toast.success(`Analyzed ${data.analyzed} page(s)${data.scraper === "scrapling" ? " via Scrapling" : ""}`);
         setExpandedId(competitorId);
         load();
       } else {
@@ -135,6 +163,10 @@ export default function CompetitorsPage() {
     } finally {
       setAnalyzingId(null);
     }
+  };
+
+  const updateSocialInput = (key: keyof SocialProfiles, value: string) => {
+    setSocialInputs((prev) => ({ ...prev, [key]: value }));
   };
 
   return (
@@ -159,11 +191,12 @@ export default function CompetitorsPage() {
           <CardHeader>
             <CardTitle className="text-lg">Add Competitor</CardTitle>
             <CardDescription>
-              Enter the competitor name and their URLs (comma-separated).
+              Enter the competitor name, website URLs, and social media profiles.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-2">
+              <label className="text-sm font-medium">Name</label>
               <Input
                 placeholder="Competitor name (e.g., FitPro Academy)"
                 value={name}
@@ -171,12 +204,39 @@ export default function CompetitorsPage() {
               />
             </div>
             <div className="space-y-2">
+              <label className="text-sm font-medium">Website URLs</label>
               <Input
-                placeholder="URLs, comma-separated (e.g., https://fitpro.com, https://instagram.com/fitpro)"
+                placeholder="Comma-separated (e.g., https://fitpro.com, https://fitpro.com/blog)"
                 value={urlInput}
                 onChange={(e) => setUrlInput(e.target.value)}
               />
+              <p className="text-xs text-muted-foreground">
+                Main website and any specific pages to monitor
+              </p>
             </div>
+
+            {/* Social Profile URLs */}
+            <div className="space-y-3">
+              <label className="text-sm font-medium">Social Profiles</label>
+              <div className="grid gap-2">
+                {SOCIAL_PLATFORMS.map((platform) => (
+                  <div key={platform.key} className="flex items-center gap-2">
+                    <span className="w-20 text-xs text-muted-foreground">
+                      {platform.label}
+                    </span>
+                    <Input
+                      className="flex-1"
+                      placeholder={platform.placeholder}
+                      value={socialInputs[platform.key] ?? ""}
+                      onChange={(e) =>
+                        updateSocialInput(platform.key, e.target.value)
+                      }
+                    />
+                  </div>
+                ))}
+              </div>
+            </div>
+
             <div className="flex gap-2">
               <Button
                 onClick={handleAdd}
@@ -191,6 +251,7 @@ export default function CompetitorsPage() {
                   setShowAddForm(false);
                   setName("");
                   setUrlInput("");
+                  setSocialInputs({});
                 }}
               >
                 Cancel
@@ -225,6 +286,8 @@ export default function CompetitorsPage() {
           {competitors.map((c) => {
             const isExpanded = expandedId === c.id;
             const analysis = c.latestAnalysis;
+            const socialProfiles = c.socialProfiles ?? {};
+            const hasSocials = Object.values(socialProfiles).some(Boolean);
 
             return (
               <Card key={c.id}>
@@ -235,6 +298,12 @@ export default function CompetitorsPage() {
                       <CardDescription>
                         {(c.urls ?? []).length} URL
                         {(c.urls ?? []).length !== 1 ? "s" : ""} tracked
+                        {hasSocials && (
+                          <>
+                            {" + "}
+                            {Object.values(socialProfiles).filter(Boolean).length} social
+                          </>
+                        )}
                         {c.contentCount > 0 &&
                           ` | ${c.contentCount} content item${c.contentCount !== 1 ? "s" : ""}`}
                       </CardDescription>
@@ -264,7 +333,7 @@ export default function CompetitorsPage() {
                   </div>
                 </CardHeader>
                 <CardContent className="space-y-3">
-                  {/* URLs */}
+                  {/* Website URLs */}
                   {(c.urls ?? []).length > 0 && (
                     <div className="space-y-1">
                       {(c.urls ?? []).map((url, i) => (
@@ -275,6 +344,27 @@ export default function CompetitorsPage() {
                           {url}
                         </p>
                       ))}
+                    </div>
+                  )}
+
+                  {/* Social profile badges */}
+                  {hasSocials && (
+                    <div className="flex flex-wrap gap-1">
+                      {socialProfiles.instagram && (
+                        <Badge variant="outline" className="text-xs">Instagram</Badge>
+                      )}
+                      {socialProfiles.tiktok && (
+                        <Badge variant="outline" className="text-xs">TikTok</Badge>
+                      )}
+                      {socialProfiles.twitter && (
+                        <Badge variant="outline" className="text-xs">Twitter/X</Badge>
+                      )}
+                      {socialProfiles.facebook && (
+                        <Badge variant="outline" className="text-xs">Facebook</Badge>
+                      )}
+                      {socialProfiles.linkedin && (
+                        <Badge variant="outline" className="text-xs">LinkedIn</Badge>
+                      )}
                     </div>
                   )}
 
