@@ -13,6 +13,10 @@ export interface AgentContext {
   goalsContext?: string;
   plansContext?: string;
   brainContext?: string;
+  channelsContext?: string;
+  icpContext?: string;
+  positioningContext?: string;
+  campaignMissionsContext?: string;
 }
 
 export interface AgentResult {
@@ -46,7 +50,11 @@ export async function orchestrate(
     context.productsContext,
     context.goalsContext,
     context.plansContext,
-    context.brainContext
+    context.brainContext,
+    context.channelsContext,
+    context.icpContext,
+    context.positioningContext,
+    context.campaignMissionsContext
   );
 
   return { systemPrompt, taskType, model };

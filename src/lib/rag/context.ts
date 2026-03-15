@@ -18,6 +18,10 @@ import {
   marketingGoals,
   marketingPlans,
   tactics,
+  gtmChannels,
+  channelExperiments,
+  customerProfiles,
+  positioningFrameworks,
 } from "@/lib/db/schema";
 import { getRelevantLearnings } from "@/lib/memory/long-term";
 import { searchKnowledge } from "./search";
@@ -37,6 +41,10 @@ export interface AssembledContext {
   goalsContext: string;
   plansContext: string;
   brainContext: string;
+  channelsContext: string;
+  icpContext: string;
+  positioningContext: string;
+  campaignMissionsContext: string;
 }
 
 interface ContextFreshnessVector {
@@ -502,6 +510,10 @@ export async function assembleContext(
     productRows,
     goalRows,
     activePlanRows,
+    channelRows,
+    icpRows,
+    positioningRows,
+    campaignMissionRows,
   ] = await Promise.all([
     searchKnowledge(orgId, query, 5, org?.slug),
     getRelevantLearnings(orgId, query, 5, userId),
@@ -581,6 +593,83 @@ export async function assembleContext(
       )
       .orderBy(desc(marketingPlans.updatedAt))
       .limit(5),
+    // Phase 1: Channels
+    db
+      .select({
+        channel: gtmChannels.channel,
+        channelCategory: gtmChannels.channelCategory,
+        status: gtmChannels.status,
+        priority: gtmChannels.priority,
+        rationale: gtmChannels.rationale,
+        notes: gtmChannels.notes,
+      })
+      .from(gtmChannels)
+      .where(
+        and(
+          eq(gtmChannels.orgId, orgId),
+          sql`${gtmChannels.status} != 'killed'`
+        )
+      )
+      .orderBy(gtmChannels.priority)
+      .limit(20),
+    // Phase 2: ICPs
+    db
+      .select({
+        name: customerProfiles.name,
+        isPrimary: customerProfiles.isPrimary,
+        status: customerProfiles.status,
+        painPoints: customerProfiles.painPoints,
+        goals: customerProfiles.goals,
+        objections: customerProfiles.objections,
+        preferredChannels: customerProfiles.preferredChannels,
+        messagingAngle: customerProfiles.messagingAngle,
+      })
+      .from(customerProfiles)
+      .where(
+        and(
+          eq(customerProfiles.orgId, orgId),
+          sql`${customerProfiles.status} != 'retired'`
+        )
+      )
+      .orderBy(desc(customerProfiles.isPrimary), customerProfiles.name)
+      .limit(10),
+    // Phase 2: Positioning
+    db
+      .select({
+        type: positioningFrameworks.type,
+        title: positioningFrameworks.title,
+        content: positioningFrameworks.content,
+        version: positioningFrameworks.version,
+      })
+      .from(positioningFrameworks)
+      .where(
+        and(
+          eq(positioningFrameworks.orgId, orgId),
+          eq(positioningFrameworks.isActive, true)
+        )
+      )
+      .orderBy(desc(positioningFrameworks.updatedAt))
+      .limit(10),
+    // Phase 3: Campaign missions (active only, with milestones)
+    db
+      .select({
+        id: campaigns.id,
+        name: campaigns.name,
+        status: campaigns.status,
+        milestones: campaigns.milestones,
+        completionPercent: campaigns.completionPercent,
+        successCriteria: campaigns.successCriteria,
+        endDate: campaigns.endDate,
+      })
+      .from(campaigns)
+      .where(
+        and(
+          eq(campaigns.orgId, orgId),
+          inArray(campaigns.status, ["active", "draft"])
+        )
+      )
+      .orderBy(desc(campaigns.updatedAt))
+      .limit(8),
   ]);
 
   // Format products context
@@ -624,6 +713,77 @@ export async function assembleContext(
         .join("\n")
     : "";
 
+  // Format channels context (Phase 1)
+  const channelsContext = channelRows.length > 0
+    ? channelRows
+        .map((ch, i) => {
+          const parts = [`(${i + 1}) ${ch.channel} [${ch.channelCategory}] — ${ch.status} (priority ${ch.priority})`];
+          if (ch.rationale) parts.push(`  Rationale: ${ch.rationale}`);
+          if (ch.notes) parts.push(`  Notes: ${ch.notes}`);
+          return parts.join("\n");
+        })
+        .join("\n")
+    : "";
+
+  // Format ICP context (Phase 2)
+  const icpContext = icpRows.length > 0
+    ? icpRows
+        .map((p, i) => {
+          const parts = [`(${i + 1}) ${p.name}${p.isPrimary ? " [PRIMARY]" : ""} [${p.status}]`];
+          if (p.painPoints?.length) parts.push(`  Pain Points: ${(p.painPoints as string[]).join("; ")}`);
+          if (p.goals?.length) parts.push(`  Goals: ${(p.goals as string[]).join("; ")}`);
+          if (p.objections?.length) parts.push(`  Objections: ${(p.objections as string[]).join("; ")}`);
+          if (p.preferredChannels?.length) parts.push(`  Channels: ${(p.preferredChannels as string[]).join(", ")}`);
+          if (p.messagingAngle) parts.push(`  Angle: ${p.messagingAngle}`);
+          return parts.join("\n");
+        })
+        .join("\n")
+    : "";
+
+  // Format positioning context (Phase 2)
+  const positioningContext = positioningRows.length > 0
+    ? positioningRows
+        .map((f, i) => {
+          const typeName = f.type.replace(/_/g, " ");
+          const summary = typeof f.content === "object" && f.content !== null
+            ? Object.entries(f.content as Record<string, unknown>)
+                .slice(0, 3)
+                .map(([k, v]) => `${k}: ${String(v).slice(0, 100)}`)
+                .join(" | ")
+            : "";
+          return `(${i + 1}) [${typeName}] ${f.title} (v${f.version})${summary ? ` — ${summary}` : ""}`;
+        })
+        .join("\n")
+    : "";
+
+  // Format campaign missions context (Phase 3)
+  const campaignMissionsContext = campaignMissionRows.length > 0
+    ? campaignMissionRows
+        .map((c, i) => {
+          const milestones = (c.milestones ?? []) as Array<{
+            title: string;
+            dueDate: string;
+            status: string;
+          }>;
+          const overdue = milestones.filter(
+            (m) => m.status === "pending" && new Date(m.dueDate) < new Date()
+          );
+          const parts = [
+            `(${i + 1}) "${c.name}" [${c.status}] — ${c.completionPercent ?? 0}% complete`,
+          ];
+          if (overdue.length > 0) {
+            parts.push(`  OVERDUE: ${overdue.map((m) => `"${m.title}" (due ${m.dueDate})`).join(", ")}`);
+          }
+          if (milestones.length > 0) {
+            const next = milestones.find((m) => m.status === "pending");
+            if (next) parts.push(`  Next milestone: "${next.title}" (due ${next.dueDate})`);
+          }
+          if (c.successCriteria) parts.push(`  Success criteria: ${c.successCriteria}`);
+          return parts.join("\n");
+        })
+        .join("\n")
+    : "";
+
   const assembled: AssembledContext = {
     brandContext: formatBrandContext(brand),
     ragContext: knowledgeResults
@@ -653,6 +813,10 @@ export async function assembleContext(
     goalsContext,
     plansContext,
     brainContext: formatBrainContext(brainResults),
+    channelsContext,
+    icpContext,
+    positioningContext,
+    campaignMissionsContext,
   };
 
   setContextCache(cacheKey, {

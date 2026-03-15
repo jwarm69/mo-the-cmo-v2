@@ -180,6 +180,24 @@ export const campaigns = pgTable("campaigns", {
   endDate: timestamp("end_date"),
   budget: real("budget"),
   metrics: jsonb("metrics").$type<Record<string, number>>(),
+  // Phase 3: Campaign Missions
+  milestones: jsonb("milestones").$type<{
+    title: string;
+    dueDate: string;
+    status: "pending" | "completed" | "overdue";
+    completedAt?: string;
+  }[]>(),
+  deliverables: jsonb("deliverables").$type<{
+    title: string;
+    type: string;
+    status: "pending" | "in_progress" | "done";
+    contentItemId?: string;
+  }[]>(),
+  targetIcpId: uuid("target_icp_id"),
+  channelIds: jsonb("channel_ids").$type<string[]>(),
+  successCriteria: text("success_criteria"),
+  retrospective: text("retrospective"),
+  completionPercent: real("completion_percent").default(0),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
@@ -196,6 +214,7 @@ export const contentItems = pgTable(
     campaignId: uuid("campaign_id").references(() => campaigns.id),
     sourceContentId: uuid("source_content_id"),
     platform: platformEnum("platform").notNull(),
+    contentType: text("content_type").default("social_content").notNull(), // social_content, battle_card, outbound_sequence, objection_handler, pitch_deck_outline, one_pager, case_study
     status: contentStatusEnum("status").default("draft").notNull(),
     title: text("title"),
     body: text("body").notNull(),
@@ -659,6 +678,9 @@ export const contextTypeEnum = pgEnum("context_type", [
   "goal_context",        // Goal rationale, progress notes, pivots
   "plan_context",        // Plan summaries, strategy docs, phase descriptions
   "conversation_extract",// Key info extracted from chat conversations
+  "icp_insight",         // Customer profile insights from conversations
+  "positioning_insight", // Positioning/messaging insights from conversations
+  "channel_insight",     // Channel strategy insights from conversations
 ]);
 
 export const contextEntries = pgTable(
@@ -766,6 +788,166 @@ export const competitorContent = pgTable(
   ]
 );
 
+// ─── GTM Channels ──────────────────────────────────────────────────
+// Persistent channel strategy — tracks which marketing channels are
+// active, explored, paused, or killed, with rationale and metrics.
+
+export const channelStatusEnum = pgEnum("channel_status", [
+  "exploring",
+  "planned",
+  "active",
+  "paused",
+  "killed",
+]);
+
+export const gtmChannels = pgTable(
+  "gtm_channels",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    orgId: uuid("org_id")
+      .references(() => organizations.id)
+      .notNull(),
+    channel: text("channel").notNull(), // e.g. "tiktok", "local-event", "referral-program"
+    channelCategory: text("channel_category").notNull(), // "digital", "physical", "guerrilla", etc.
+    status: channelStatusEnum("status").default("exploring").notNull(),
+    priority: integer("priority").default(3).notNull(), // 1 (highest) to 5 (lowest)
+    rationale: text("rationale"), // Why this status / priority
+    startedAt: timestamp("started_at"),
+    pausedAt: timestamp("paused_at"),
+    metrics: jsonb("metrics").$type<Record<string, unknown>>(),
+    notes: text("notes"),
+    metadata: jsonb("metadata").$type<Record<string, unknown>>(),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  },
+  (table) => [
+    uniqueIndex("gtm_channels_org_channel_idx").on(table.orgId, table.channel),
+    index("gtm_channels_org_idx").on(table.orgId),
+    index("gtm_channels_org_status_idx").on(table.orgId, table.status),
+  ]
+);
+
+// ─── Channel Experiments ────────────────────────────────────────────
+// Hypothesis-driven experiments on marketing channels.
+
+export const experimentVerdictEnum = pgEnum("experiment_verdict", [
+  "success",
+  "partial",
+  "failure",
+  "inconclusive",
+]);
+
+export const channelExperiments = pgTable(
+  "channel_experiments",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    channelId: uuid("channel_id")
+      .references(() => gtmChannels.id)
+      .notNull(),
+    orgId: uuid("org_id")
+      .references(() => organizations.id)
+      .notNull(),
+    hypothesis: text("hypothesis").notNull(),
+    action: text("action").notNull(),
+    result: text("result"),
+    verdict: experimentVerdictEnum("verdict"),
+    tacticId: uuid("tactic_id").references(() => tactics.id),
+    metadata: jsonb("metadata").$type<Record<string, unknown>>(),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  },
+  (table) => [
+    index("channel_experiments_channel_idx").on(table.channelId),
+    index("channel_experiments_org_idx").on(table.orgId),
+  ]
+);
+
+// ─── Customer Profiles (ICPs) ──────────────────────────────────────
+// Ideal Customer Profiles — detailed persona definitions that drive
+// all marketing strategy, messaging, and channel selection.
+
+export const icpStatusEnum = pgEnum("icp_status", [
+  "draft",
+  "active",
+  "retired",
+]);
+
+export const customerProfiles = pgTable(
+  "customer_profiles",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    orgId: uuid("org_id")
+      .references(() => organizations.id)
+      .notNull(),
+    name: text("name").notNull(), // e.g. "Time-Starved Professional Mom"
+    isPrimary: boolean("is_primary").default(false).notNull(),
+    status: icpStatusEnum("status").default("draft").notNull(),
+    demographics: jsonb("demographics").$type<{
+      age?: string;
+      gender?: string;
+      location?: string;
+      income?: string;
+      occupation?: string;
+    }>(),
+    psychographics: jsonb("psychographics").$type<{
+      values?: string[];
+      interests?: string[];
+      lifestyle?: string;
+    }>(),
+    painPoints: jsonb("pain_points").$type<string[]>(),
+    goals: jsonb("goals").$type<string[]>(),
+    objections: jsonb("objections").$type<string[]>(),
+    buyingTriggers: jsonb("buying_triggers").$type<string[]>(),
+    preferredChannels: jsonb("preferred_channels").$type<string[]>(),
+    messagingAngle: text("messaging_angle"),
+    evidence: text("evidence"),
+    metadata: jsonb("metadata").$type<Record<string, unknown>>(),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  },
+  (table) => [
+    index("customer_profiles_org_idx").on(table.orgId),
+    index("customer_profiles_org_status_idx").on(table.orgId, table.status),
+  ]
+);
+
+// ─── Positioning Frameworks ────────────────────────────────────────
+// Versioned positioning, value props, and messaging frameworks
+// per product and ICP combination.
+
+export const positioningTypeEnum = pgEnum("positioning_type", [
+  "value_prop",
+  "positioning_statement",
+  "messaging_framework",
+  "competitive_positioning",
+]);
+
+export const positioningFrameworks = pgTable(
+  "positioning_frameworks",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    orgId: uuid("org_id")
+      .references(() => organizations.id)
+      .notNull(),
+    productId: uuid("product_id").references(() => products.id),
+    icpId: uuid("icp_id").references(() => customerProfiles.id),
+    type: positioningTypeEnum("type").notNull(),
+    title: text("title").notNull(),
+    content: jsonb("content").$type<Record<string, unknown>>().notNull(),
+    version: integer("version").default(1).notNull(),
+    isActive: boolean("is_active").default(true).notNull(),
+    metadata: jsonb("metadata").$type<Record<string, unknown>>(),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  },
+  (table) => [
+    index("positioning_frameworks_org_idx").on(table.orgId),
+    index("positioning_frameworks_org_type_idx").on(table.orgId, table.type),
+    index("positioning_frameworks_product_idx").on(table.productId),
+    index("positioning_frameworks_icp_idx").on(table.icpId),
+  ]
+);
+
 // Type exports
 export type Organization = typeof organizations.$inferSelect;
 export type UserProfile = typeof userProfiles.$inferSelect;
@@ -791,3 +973,7 @@ export type ContextEntry = typeof contextEntries.$inferSelect;
 export type ContentTemplate = typeof contentTemplates.$inferSelect;
 export type CompetitorProfile = typeof competitorProfiles.$inferSelect;
 export type CompetitorContent = typeof competitorContent.$inferSelect;
+export type GtmChannel = typeof gtmChannels.$inferSelect;
+export type ChannelExperiment = typeof channelExperiments.$inferSelect;
+export type CustomerProfile = typeof customerProfiles.$inferSelect;
+export type PositioningFramework = typeof positioningFrameworks.$inferSelect;

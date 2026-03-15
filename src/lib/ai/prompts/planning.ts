@@ -439,6 +439,60 @@ Respond in JSON (no markdown fences):
 }
 
 /**
+ * Channel Assessment Prompt — structured evaluation of a channel's fit for the business.
+ */
+export function buildChannelAssessmentPrompt(opts: {
+  brandContext: string;
+  icpContext: string;
+  productsContext: string;
+  currentChannels: string;
+  channelToAssess: string;
+  channelCategory: string;
+}): string {
+  return `You are Mo, the AI Go-To-Market Strategist.
+Evaluate whether the "${opts.channelToAssess}" channel (${opts.channelCategory}) is a good fit for this business.
+
+## Brand & Business Context
+${opts.brandContext}
+
+## Ideal Customer Profiles
+${opts.icpContext || "No ICPs defined yet — assess based on brand context."}
+
+## Products & Offers
+${opts.productsContext || "No products defined."}
+
+## Current Channel Mix
+${opts.currentChannels || "No channels tracked yet."}
+
+## Your Task
+Provide a structured channel assessment:
+
+1. **Fit Score** (1-10) — How well does this channel match the business and ICP?
+2. **ICP Alignment** — Where does the target audience actually spend time? Is this channel one of them?
+3. **Competitive Advantage** — Can this business differentiate on this channel?
+4. **Resource Requirements** — Time, money, and skill needed to be effective
+5. **Expected Timeline** — When would you expect to see results?
+6. **Recommended Priority** (1-5) — Where should this rank vs. other channels?
+7. **First Experiment** — A specific, low-cost experiment to test this channel
+8. **Risks** — What could go wrong and what to watch for
+9. **Verdict** — Recommended status: exploring, planned, active, or skip
+
+Respond in JSON (no markdown fences):
+{
+  "fitScore": 7,
+  "icpAlignment": "string",
+  "competitiveAdvantage": "string",
+  "resources": { "time": "string", "cost": "string", "skill": "string" },
+  "expectedTimeline": "string",
+  "recommendedPriority": 2,
+  "firstExperiment": { "hypothesis": "string", "action": "string", "successMetric": "string" },
+  "risks": ["string"],
+  "verdict": "exploring|planned|active|skip",
+  "rationale": "string"
+}`;
+}
+
+/**
  * Multi-channel ideation prompt — creative tactics beyond social posts.
  */
 export function buildIdeationPrompt(opts: {

@@ -16,7 +16,9 @@ export type TaskType =
   | "hashtags"
   | "reformatting"
   | "chat"
-  | "analysis";
+  | "analysis"
+  | "channel_strategy"
+  | "sales_enablement";
 
 const TASK_MODEL_MAP: Record<TaskType, LanguageModel> = {
   // High-stakes strategic tasks -> GPT-4o
@@ -28,6 +30,8 @@ const TASK_MODEL_MAP: Record<TaskType, LanguageModel> = {
   ideation: gpt4o,
   weekly_report: gpt4o,
   analysis: gpt4o,
+  channel_strategy: gpt4o,
+  sales_enablement: gpt4o,
 
   // Creative content tasks -> GPT-4o
   content_writing: gpt4o,
@@ -47,6 +51,31 @@ export function routeTask(taskType: TaskType): LanguageModel {
 
 export function inferTaskType(message: string): TaskType {
   const lower = message.toLowerCase();
+
+  // Channel strategy (check before generic "strategy")
+  if (
+    lower.includes("channel") ||
+    lower.includes("channel mix") ||
+    lower.includes("which channels") ||
+    lower.includes("channel strategy")
+  ) {
+    return "channel_strategy";
+  }
+
+  // Sales enablement
+  if (
+    lower.includes("battle card") ||
+    lower.includes("outbound sequence") ||
+    lower.includes("objection handler") ||
+    lower.includes("one-pager") ||
+    lower.includes("one pager") ||
+    lower.includes("pitch deck") ||
+    lower.includes("case study") ||
+    lower.includes("sales asset") ||
+    lower.includes("sales enablement")
+  ) {
+    return "sales_enablement";
+  }
 
   // Strategic planning (check before generic "plan" to catch specific types)
   if (
@@ -133,7 +162,10 @@ export function inferTaskType(message: string): TaskType {
   if (
     lower.includes("strategy") ||
     lower.includes("plan") ||
-    lower.includes("positioning")
+    lower.includes("positioning") ||
+    lower.includes("icp") ||
+    lower.includes("ideal customer") ||
+    lower.includes("customer profile")
   ) {
     return "strategy";
   }

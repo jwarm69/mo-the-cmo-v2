@@ -30,6 +30,9 @@ Categories to extract:
 - market_insight: Competitive info, trends they mention, opportunities they see
 - brand_voice: How they want to sound, examples of tone they like/dislike, corrections to AI output
 - goal_context: Goals, targets, timelines, priorities they mention
+- icp_insight: Details about ideal customers — demographics, psychographics, pain points, buying triggers, objections
+- positioning_insight: Value propositions, positioning statements, messaging angles, competitive differentiation
+- channel_insight: Which marketing channels work, don't work, are being considered, or have been tried with results
 
 Return a JSON array of extracted items. If nothing substantive is found, return an empty array [].
 

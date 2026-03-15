@@ -93,6 +93,10 @@ export async function POST(req: Request) {
       goalsContext: assembled.goalsContext,
       plansContext: assembled.plansContext,
       brainContext: assembled.brainContext,
+      channelsContext: assembled.channelsContext,
+      icpContext: assembled.icpContext,
+      positioningContext: assembled.positioningContext,
+      campaignMissionsContext: assembled.campaignMissionsContext,
     });
 
     const tools = createMoTools(org.id, org.slug);
