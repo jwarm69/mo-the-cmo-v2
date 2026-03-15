@@ -22,6 +22,7 @@ export async function GET(req: Request) {
       orgId: competitorProfiles.orgId,
       name: competitorProfiles.name,
       urls: competitorProfiles.urls,
+      socialProfiles: competitorProfiles.socialProfiles,
       lastScrapedAt: competitorProfiles.lastScrapedAt,
       metadata: competitorProfiles.metadata,
       createdAt: competitorProfiles.createdAt,
@@ -70,14 +71,29 @@ export async function POST(req: Request) {
   const body = await req.json();
   const org = await resolveOrgFromRequest(req, body, user.orgId);
 
-  const { name, urls } = body as { name: string; urls?: string[] };
+  const { name, urls, socialProfiles } = body as {
+    name: string;
+    urls?: string[];
+    socialProfiles?: {
+      instagram?: string;
+      tiktok?: string;
+      twitter?: string;
+      facebook?: string;
+      linkedin?: string;
+    };
+  };
   if (!name || !name.trim()) {
     return NextResponse.json({ error: "name is required" }, { status: 400 });
   }
 
   const [created] = await db
     .insert(competitorProfiles)
-    .values({ orgId: org.id, name: name.trim(), urls: urls ?? [] })
+    .values({
+      orgId: org.id,
+      name: name.trim(),
+      urls: urls ?? [],
+      socialProfiles: socialProfiles ?? {},
+    })
     .returning();
 
   return NextResponse.json(created, { status: 201 });

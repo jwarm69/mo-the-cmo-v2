@@ -752,6 +752,13 @@ export const competitorProfiles = pgTable(
       .notNull(),
     name: text("name").notNull(),
     urls: jsonb("urls").$type<string[]>(),
+    socialProfiles: jsonb("social_profiles").$type<{
+      instagram?: string;
+      tiktok?: string;
+      twitter?: string;
+      facebook?: string;
+      linkedin?: string;
+    }>(),
     lastScrapedAt: timestamp("last_scraped_at"),
     metadata: jsonb("metadata").$type<Record<string, unknown>>(),
     createdAt: timestamp("created_at").defaultNow().notNull(),
